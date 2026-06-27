@@ -1,0 +1,225 @@
+:root {
+  --primary-color: #1e3d59;
+  --secondary-color: #17b978;
+  --background-color: #f0f2f5;
+  --sidebar-width: 250px;
+}
+
+body {
+  font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: var(--background-color);
+  height: 100vh;
+  overflow: hidden;
+}
+
+#loginWrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: var(--primary-color);
+}
+
+.login-box {
+  background: white;
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  width: 90%;
+  max-width: 400px;
+  text-align: center;
+}
+
+.login-box h2 { color: var(--primary-color); margin-top: 0; margin-bottom: 25px; }
+.login-input { width: 100%; padding: 15px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+.btn-login { width: 100%; padding: 15px; background: var(--secondary-color); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px; }
+
+#mainContainer {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+}
+
+.sidebar {
+  width: var(--sidebar-width);
+  background-color: #fff;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #e0e0e0;
+  z-index: 100;
+}
+
+.sidebar .logo {
+  padding: 25px 20px;
+  font-size: 20px;
+  font-weight: bold;
+  color: var(--primary-color);
+  border-bottom: 1px solid #eee;
+  text-align: center;
+}
+
+.menu-group { padding: 20px 0; flex-grow: 1; }
+.menu-title { font-size: 12px; color: #999; font-weight: bold; padding: 0 20px; margin-bottom: 10px; }
+.menu-item { padding: 15px 20px; color: #555; cursor: pointer; display: flex; align-items: center; font-size: 15px; }
+.menu-item:hover { background-color: #f5f5f5; color: var(--primary-color); }
+.menu-item.active { background-color: #e8f0f7; color: var(--primary-color); font-weight: bold; border-right: 4px solid var(--primary-color); }
+
+.logout-area { padding: 20px; border-top: 1px solid #eee; }
+.btn-logout { width: 100%; padding: 12px; background: #fff; color: #ff6b6b; border: 1px solid #ff6b6b; border-radius: 6px; cursor: pointer; font-weight: bold; }
+
+.content {
+  flex: 1;
+  background-color: var(--background-color);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.mobile-header { display: none; background: white; padding: 15px; border-bottom: 1px solid #ddd; align-items: center; justify-content: space-between; }
+.menu-toggle-btn { background: none; border: none; font-size: 24px; color: var(--primary-color); cursor: pointer; }
+.content-body {
+  padding: 10px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.page-panel {
+  display: none;
+  background: white;
+  padding: 12px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  width: 100%;
+  box-sizing: border-box;
+  flex: 1; 
+  display: flex;
+  flex-direction: column;
+}
+.page-panel.active { display: flex; }
+.section-header {
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #dee2e6;
+}
+.section-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--primary-color);
+  margin: 0;
+}
+
+/* 상단 입력 폼 */
+/* 입력 폼 전체 그리드 */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); 
+  gap: 8px 15px;
+  margin-bottom: 12px;
+}
+
+/* 개별 입력 칸 감싸는 박스 */
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 입력창 위의 제목 (라벨) */
+.form-group label {
+  font-size: 12px;
+  margin-bottom: 3px;
+  font-weight: bold;
+  color: #444;
+}
+
+/* 실제 입력창 (Input) */
+.form-group input {
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 13px;
+  box-sizing: border-box;
+  height: 32px;
+}
+
+.table-wrap { overflow-x: auto; width: 100%; margin-bottom: 30px; border: 1px solid #eee; border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; min-width: 800px; }
+th, td { border-bottom: 1px solid #eee; padding: 15px; text-align: center; font-size: 14px; }
+th { background-color: #f9fafb; color: #333; font-weight: 600; }
+
+.qty-input { width: 80px; padding: 8px; text-align: right; border: 1px solid #ccc; border-radius: 4px; }
+
+/* 버튼영역 */
+.btn-container {
+  text-align: right;
+  margin-top: 12px;
+}
+
+/* 실제 [가입고 전송] 버튼 */
+.btn-submit {
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 8px 10px; 
+  font-size: 13px;
+  font-weight: bold;
+  border-radius: 4px;
+  cursor: pointer;
+  height: 32px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clickable-count { color: #0056b3; text-decoration: underline; font-weight: bold; cursor: pointer; padding: 5px 10px; background-color: #f0f7ff; border-radius: 4px; }
+.clickable-count:hover { background-color: #e0efff; }
+.badge { padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+.badge-ready { background-color: #fff3cd; color: #856404; }
+.badge-complete { background-color: #d4edda; color: #155724; }
+
+.modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 200; justify-content: center; align-items: center; }
+.modal-content { background-color: white; padding: 30px; border-radius: 10px; width: 90%; max-width: 700px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+.modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary-color); padding-bottom: 15px; margin-bottom: 20px; }
+.modal-header h2 { margin: 0; font-size: 18px; color: var(--primary-color); }
+.close-btn { font-size: 24px; color: #aaa; cursor: pointer; border: none; background: none; }
+.modal-footer { text-align: right; margin-top: 20px; }
+.btn-close-modal { padding: 10px 20px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; }
+
+#mobileOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 99; }
+
+/* PC 화면일 때 */
+@media (min-width: 993px) {
+  .section-title {
+    font-size: 18px; 
+  }
+}
+
+/* 모바일 화면일 때 */
+@media (max-width: 992px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .form-group input {
+    height: 34px; 
+  }
+  .sidebar { position: fixed; left: 0; top: 0; bottom: 0; transform: translateX(-100%); transition: transform 0.3s; }
+  .sidebar.open { transform: translateX(0); }
+  .content { margin-left: 0; }
+  .mobile-header { display: flex; }
+  #mobileOverlay { display: block; }
+  .content-body { padding: 8px; }
+  .page-panel { padding: 10px; }
+  .btn-container {
+    margin-top: 10px;
+  }
+  .btn-submit {
+    width: 100%;
+    height: 38px;
+    font-size: 14px;
+  }
+}
