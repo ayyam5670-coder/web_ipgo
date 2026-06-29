@@ -1,12 +1,22 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { AgGridReact } from 'ag-grid-react';
-import { AllCommunityModule, ModuleRegistry, ValidationModule } from 'ag-grid-community';
-import type { ColDef, RowSelectionOptions } from 'ag-grid-community'; // 🔥 RowSelectionOptions 타입 추가
+import { AllCommunityModule, ModuleRegistry, ValidationModule, themeAlpine } from 'ag-grid-community'; 
+import type { ColDef, RowSelectionOptions } from 'ag-grid-community';
 
 ModuleRegistry.registerModules([AllCommunityModule, ValidationModule]);
 
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-alpine.css';
+// 등록 화면용 콤팩트 테마 커스텀 변수 선언
+const myCompactTheme = themeAlpine.withParams({
+  headerHeight: 32,
+  rowHeight: 28,
+  fontSize: '12px',
+});
+
+const loginUser = {
+  userId: 'supplier_01',
+  compCode: 'C001',
+  compName: '(주)한국정밀'
+};
 
 interface IpgoRegisterProps {
   setActivePage: (page: string) => void;
@@ -14,54 +24,94 @@ interface IpgoRegisterProps {
 
 interface BomItem {
   checkbox: boolean;
-  partNo: string;
-  partName: string;
+  itemCode: string;
+  itemName: string;
   orderQty: number;
   prevIpgoQty: number;
   actualIpgoQty: number;
-  requiredQty: number;
+  needIpgoQty: number; 
   currentQty: number;
   unit: string;
 }
 
 export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
-  const [rowData] = useState<BomItem[]>([
-    { checkbox: true, partNo: 'BRK-FRONT-01', partName: '브레이크 패드 (앞)', orderQty: 2000, prevIpgoQty: 500, actualIpgoQty: 500, requiredQty: 1500, currentQty: 500, unit: 'EA' },
-    { checkbox: true, partNo: 'BOLT-M08-L20', partName: '조립용 플랜지 볼트', orderQty: 5000, prevIpgoQty: 2000, actualIpgoQty: 1500, requiredQty: 3500, currentQty: 2000, unit: 'EA' },
-    { checkbox: false, partNo: 'SST-GUIDE-R', partName: '가이드 레일 (우)', orderQty: 1000, prevIpgoQty: 0, actualIpgoQty: 0, requiredQty: 1000, currentQty: 0, unit: 'EA' }
-  ]);
+  const gridRef = useRef<AgGridReact>(null);
+  
+  const [isPoModalOpen, setIsPoModalOpen] = useState(false);
+  const [isItemModalOpen, setIsItemModalOpen] = useState(false);
+  const [selectedPoNo, setSelectedPoNo] = useState('');
 
-  // 그리드 컬럼
+  const getPastDate = (daysAgo: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    return d.toISOString().split('T')[0];
+  };
+  const [poStartDate, setPoStartDate] = useState(getPastDate(7));
+  const [poEndDate, setPoEndDate] = useState(getPastDate(0));
+  const [poSearchText, setPoSearchText] = useState('');
+
+  const poData = [
+    { poNo: 'PO-20260629-001', compName: '(주)한국정밀', itemSummary: '브레이크 패드 외 2건', poDate: '2026-06-29' },
+    { poNo: 'PO-20260625-004', compName: '(주)한국정밀', itemSummary: '조립용 플랜지 볼트 1건', poDate: '2026-06-25' },
+    { poNo: 'PO-20260620-002', compName: '삼우정밀', itemSummary: '가이드 레일 (우) 외 5건', poDate: '2026-06-20' },
+    { poNo: 'PO-20260515-001', compName: '대성기공', itemSummary: '에어 실린더 2건', poDate: '2026-05-15' },
+  ];
+
+  const itemMasterData = [
+    { itemCode: 'ITEM-BOLT-001', itemName: '육각 볼트 M12', unit: 'EA' },
+    { itemCode: 'ITEM-NUT-005', itemName: '플랜지 너트 M12', unit: 'EA' },
+    { itemCode: 'ITEM-PAD-021', itemName: '방진 고무 패드 (대)', unit: 'BOX' },
+    { itemCode: 'ITEM-WASH-11', itemName: '평와셔 M12', unit: 'EA' },
+  ];
+
+  const [rowData, setRowData] = useState<BomItem[]>([]);
+
   const [columnDefs] = useState<ColDef[]>([
-    { field: 'partNo', headerName: '품번', width: 120, sortable: true, filter: true },
-    { field: 'partName', headerName: '품명', width: 250, sortable: true, filter: true },
-    { field: 'orderQty', headerName: '주문수량', width: 90, cellStyle: { textAlign: 'right' } },
-    { field: 'prevIpgoQty', headerName: '이전 가입고 수량', width: 130, cellStyle: { textAlign: 'right' } },
-    { field: 'actualIpgoQty', headerName: '실제 입고수량', width: 120, cellStyle: { textAlign: 'right' } },
-    { field: 'requiredQty', headerName: '필요 입고수량', width: 120, cellStyle: { textAlign: 'right', color: '#ff6b6b', fontWeight: 'bold' } },
+    { field: 'itemCode', headerName: '품번', width: 120, sortable: true, filter: true },
+    { field: 'itemName', headerName: '품명', flex: 2, minWidth: 120, sortable: true, filter: true },
+    { field: 'orderQty', headerName: '발주수량', width: 90, cellStyle: { textAlign: 'right' } },
+    { field: 'needIpgoQty', headerName: '필요 입고수량', width: 120, cellStyle: { textAlign: 'right', color: '#ff6b6b', fontWeight: 'bold' } },
     { 
       field: 'currentQty', 
       headerName: '금회 납품수량', 
-      width: 120, 
+      flex: 1, 
+      minWidth: 120, 
       editable: true, 
       cellEditor: 'agTextCellEditor', 
       cellStyle: { textAlign: 'right', backgroundColor: '#e8f0f7', fontWeight: 'bold' } 
     },
+    { field: 'prevIpgoQty', headerName: '이전 가입고 수량', width: 130, cellStyle: { textAlign: 'right' } },
+    { field: 'actualIpgoQty', headerName: '실제 입고수량', width: 120, cellStyle: { textAlign: 'right' } },
     { field: 'unit', headerName: '단위', width: 60 }
   ]);
 
- const defaultColDef = useMemo<ColDef>(() => ({
-  resizable: true,
-  // 🔥 셀 내부의 기본 폰트 크기와 패딩(여백)을 줄여서 콤팩트하게 만듭니다.
-  cellStyle: { fontSize: '12px', paddingLeft: '8px', paddingRight: '8px' }
-}), []);
-
-  // 🔥 [해결] As of v32.2 Deprecated 경고 해결을 위한 신규 다중 선택 옵션 객체 정의
-  const rowSelection = useMemo<RowSelectionOptions>(() => ({
-    mode: 'multiRow',       // 구 rowSelection="multiple" 대동맥 대체
-    checkboxes: true,       // 구 컬럼 checkboxSelection 대체 (첫 컬럼에 자동 배치)
-    headerCheckbox: true    // 구 컬럼 headerCheckboxSelection 대체
+  const defaultColDef = useMemo<ColDef>(() => ({
+    resizable: true,
+    cellStyle: { fontSize: '12px', paddingLeft: '8px', paddingRight: '8px' }
   }), []);
+
+  const rowSelection = useMemo<RowSelectionOptions>(() => ({
+    mode: 'multiRow',
+    checkboxes: true,
+    headerCheckbox: true
+  }), []);
+
+  // ✨ 품목 추가 후 가등록 리스트에서 선택된 품목들을 제외시키는 함수
+  const handleRemoveItemFromGrid = () => {
+    if (!gridRef.current?.api) return;
+
+    // 현재 그리드에 체크 처리된 항목 수집
+    const selectedRows = gridRef.current.api.getSelectedRows() as BomItem[];
+
+    if (selectedRows.length === 0) {
+      alert('삭제할 품목을 왼쪽 체크박스에서 선택해 주세요.');
+      return;
+    }
+
+    // 체크된 품목코드(itemCode)를 추출하여 목록에서 필터링
+    const selectedItemCodes = selectedRows.map(row => row.itemCode);
+    setRowData(prevRows => prevRows.filter(row => !selectedItemCodes.includes(row.itemCode)));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,40 +119,191 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
     setActivePage('history');
   };
 
+  const filteredPoData = useMemo(() => {
+    return poData.filter(po => {
+      const isWithinDate = po.poDate >= poStartDate && po.poDate <= poEndDate;
+      const matchesSearch = po.poNo.toLowerCase().includes(poSearchText.toLowerCase());
+      return isWithinDate && matchesSearch;
+    });
+  }, [poStartDate, poEndDate, poSearchText]);
+
+  const handleSelectPo = (poNo: string) => {
+    const dummyPoItems: BomItem[] = [
+      { checkbox: false, itemCode: 'BRK-FRONT-01', itemName: '브레이크 패드 (앞)', orderQty: 2000, prevIpgoQty: 500, actualIpgoQty: 500, needIpgoQty: 1500, currentQty: 1500, unit: 'EA' },
+      { checkbox: false, itemCode: 'BOLT-M08-L20', itemName: '조립용 플랜지 볼트', orderQty: 5000, prevIpgoQty: 2000, actualIpgoQty: 1500, needIpgoQty: 3500, currentQty: 3500, unit: 'EA' }
+    ];
+    setSelectedPoNo(poNo);
+    setRowData(dummyPoItems);
+    setIsPoModalOpen(false);
+  };
+
+  const handleAddItemToGrid = (item: typeof itemMasterData[0]) => {
+    const newRow: BomItem = {
+      checkbox: false,
+      itemCode: item.itemCode,
+      itemName: item.itemName,
+      orderQty: 0,
+      prevIpgoQty: 0,
+      actualIpgoQty: 0,
+      needIpgoQty: 0,
+      currentQty: 1,
+      unit: item.unit
+    };
+    setRowData(prevRows => [...prevRows, newRow]);
+    setIsItemModalOpen(false);
+  };
+
   return (
-    <div className="page-panel active">
-      <div className="section-header"><h1 className="section-title">가입고(Ipgo) 등록</h1></div>
+    <div className="page-panel">
+      <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '2px solid #333', paddingBottom: '8px' }}>
+        <h1 className="section-title">가입고 등록</h1>
+        <div style={{ fontSize: '13px', color: '#666', fontWeight: 500 }}>
+          소속 업체: <span style={{ color: '#2b8a3e', fontWeight: 'bold' }}>{loginUser.compName}</span>
+        </div>
+      </div>
       
       <form onSubmit={handleSubmit} style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <div className="form-grid">
-          <div className="form-group"><label>업체명</label><input type="text" value="(주)한국정밀" readOnly style={{ background: '#f5f5f5', color: '#888' }} /></div>
+          <div className="form-group">
+            <label>업체명</label>
+            <input type="text" value="(주)한국정밀" readOnly style={{ background: '#f5f5f5', color: '#888' }} />
+          </div>
+          <div className="form-group">
+            <label>발주번호</label>
+            <div className="input-with-btn">
+              <input type="text" placeholder="검색 버튼을 눌러주세요" value={selectedPoNo} readOnly />
+              <button type="button" className="btn-search" onClick={() => setIsPoModalOpen(true)}>
+                🔍
+              </button>
+            </div>
+          </div>
+          <div className="form-group">
+            <label>입고 예정일시</label>
+            <input 
+              type="datetime-local" 
+              defaultValue={new Date().toISOString().slice(0, 16)} 
+            />
+          </div>
           <div className="form-group"><label>운전자</label><input type="text" placeholder="예: 홍길동" required /></div>
           <div className="form-group"><label>운전자 연락처</label><input type="text" placeholder="예: 010-1234-5678" required /></div>
-          <div className="form-group"><label>주문번호</label><input type="text" placeholder="예: ORD-20260626-001" required /></div>
-          <div className="form-group"><label>입고 예정일시</label><input type="datetime-local" defaultValue={new Date().toISOString().slice(0, 16)} required /></div>
         </div>
         
-        <h3 style={{ fontSize: '14px', margin: '15px 0 8px 0', color: '#333' }}>
-          품목 명세 ('금회 납품수량'은 더블클릭하여 수정 가능)
-        </h3>
-        
-        
-        <div className="ag-theme-alpine" style={{ flex: 1, minHeight: 250, width: '100%', marginBottom: 12 }}>
-            <AgGridReact
-                rowData={rowData}
-                columnDefs={columnDefs}
-                defaultColDef={defaultColDef}
-                theme="legacy"
-                rowSelection={rowSelection}
-                onCellValueChanged={(params) => console.log('데이터 수정됨:', params.data)}
-                headerHeight={28}
-                rowHeight={26}
-            />
+        {/* 품목 명세 헤더 및 컨트롤 버튼 조합바 */}
+        <div className="grid-control-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span className="grid-title">품목 명세 <span className="pc-only-text">('금회 납품수량'은 클릭하여 수정 가능)</span></span>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {/* 🔥 [추가] 품목 선택 삭제 버튼 */}
+            <button type="button" className="btn-item-delete" onClick={handleRemoveItemFromGrid} style={{ backgroundColor: '#f03e3e', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
+              🗑️ 선택 삭제
+            </button>
+            <button type="button" className="btn-item-add" onClick={() => setIsItemModalOpen(true)}>
+              ➕ 품목 추가
+            </button>
+          </div>
+        </div>
+
+        <div style={{ flex: 1, minHeight: 250, width: '100%', marginBottom: 12 }}>
+          <AgGridReact
+            ref={gridRef}
+            rowData={rowData}
+            columnDefs={columnDefs}
+            defaultColDef={defaultColDef}
+            theme={myCompactTheme} 
+            rowSelection={rowSelection}
+            singleClickEdit={true}
+            stopEditingWhenCellsLoseFocus={true} 
+            onCellValueChanged={(params) => console.log('데이터 수정됨:', params.data)}
+            onGridReady={(params) => params.api.sizeColumnsToFit()}
+            onGridSizeChanged={(params) => params.api.sizeColumnsToFit()}
+          />
         </div>
 
         <div className="btn-container">
-          <button type="submit" className="btn-submit">가입고 전송 (Ipgo 등록)</button>
+          <button type="submit" className="btn-submit">가입고 정보 등록</button>
         </div>
+
+        {/* 발주서 모달 생략 (기존과 동일) */}
+        {isPoModalOpen && (
+          <div className="modal-overlay" onClick={() => setIsPoModalOpen(false)}>
+            <div className="modal-body" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3>발주서(PO) 검색</h3>
+                <button type="button" className="btn-close" onClick={() => setIsPoModalOpen(false)}>✕</button>
+              </div>
+              <div className="modal-filters-split">
+                <div className="filter-side-date">
+                  <input type="date" value={poStartDate} onChange={(e) => setPoStartDate(e.target.value)} />
+                  <span className="date-dash">~</span>
+                  <input type="date" value={poEndDate} onChange={(e) => setPoEndDate(e.target.value)} />
+                </div>
+                <div className="filter-side-search">
+                  <input type="text" placeholder="발주번호 검색..." className="modal-search-input" value={poSearchText} onChange={(e) => setPoSearchText(e.target.value)} />
+                  <button type="button" className="btn-modal-query">조회</button>
+                </div>
+              </div>
+              <div className="modal-content-area">
+                <table className="modal-table">
+                  <thead>
+                    <tr>
+                      <th className="col-po-no">발주번호</th>
+                      <th className="col-summary">품목요약</th>
+                      <th className="col-date">발주 일자</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredPoData.length > 0 ? (
+                      filteredPoData.map((po, idx) => (
+                        <tr key={idx} className="modal-tr-row" onClick={() => handleSelectPo(po.poNo)}>
+                          <td className="font-bold-blue col-po-no">{po.poNo}</td>
+                          <td className="col-summary">{po.itemSummary}</td>
+                          <td className="text-gray col-date">{po.poDate}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr><td colSpan={3} style={{ textAlign: 'center', padding: '30px', color: '#999' }}>해당 조건에 맞는 발주서가 없습니다.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 품목 모달 생략 (기존과 동일) */}
+        {isItemModalOpen && (
+          <div className="modal-overlay" onClick={() => setIsItemModalOpen(false)}>
+            <div className="modal-body" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3>추가 품목 검색</h3>
+                <button type="button" className="btn-close" onClick={() => setIsItemModalOpen(false)}>✕</button>
+              </div>
+              <div className="modal-filters">
+                <input type="text" placeholder="품번 또는 품명 검색..." className="modal-search-input" />
+                <button type="button" className="btn-modal-query">조회</button>
+              </div>
+              <div className="modal-content-area">
+                <table className="modal-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '130px' }}>품목코드</th>
+                      <th>품목명</th>
+                      <th style={{ width: '70px' }}>단위</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {itemMasterData.map((item, idx) => (
+                      <tr key={idx} className="modal-tr-row" onClick={() => handleAddItemToGrid(item)}>
+                        <td className="font-bold-blue">{item.itemCode}</td>
+                        <td>{item.itemName}</td>
+                        <td>{item.unit}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
       </form>
     </div>
   );

@@ -52,13 +52,29 @@ body {
 }
 
 .sidebar .logo {
-  padding: 25px 20px;
-  font-size: 20px;
-  font-weight: bold;
-  color: var(--primary-color);
-  border-bottom: 1px solid #eee;
+  display: flex;
+  flex-direction: column;  /* 가로 나열에서 세로 줄바꿈으로 변경 */
+  align-items: center;     /* 로고와 글자를 가로 가운데 정렬 */
+  justify-content: center;
+  padding: 25px 20px;      /* 기존 패딩 유지 */
+  border-bottom: 1px solid #eee; /* 기존 구분선 유지 */
   text-align: center;
 }
+
+.sidebar-logo-img {
+  width: 70px;
+  height: 70px;
+  object-fit: contain;     /* 이미지 비율 유지 */
+  margin-bottom: 10px;
+}
+
+.sidebar-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--primary-color);
+  letter-spacing: 0.5px;
+}
+
 
 .menu-group { padding: 20px 0; flex-grow: 1; }
 .menu-title { font-size: 12px; color: #999; font-weight: bold; padding: 0 20px; margin-bottom: 10px; }
@@ -111,8 +127,8 @@ body {
   margin: 0;
 }
 
-/* 상단 입력 폼 */
-/* 입력 폼 전체 그리드 */
+/* 기본 pc 화면 레이아웃 */
+/* 상단 입력 폼 전체 그리드 */
 .form-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr); 
@@ -143,6 +159,32 @@ body {
   box-sizing: border-box;
   height: 32px;
 }
+/* 주문서 조회 버튼 옆 돋보기 버튼 */
+.input-with-btn {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+}
+
+.input-with-btn input {
+  flex: 1;
+}
+
+.btn-search {
+  width: 36px;
+  height: 32px;
+  background-color: #f1f3f5;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+.btn-search:hover {
+  background-color: #e9ecef;
+}
 
 .table-wrap { overflow-x: auto; width: 100%; margin-bottom: 30px; border: 1px solid #eee; border-radius: 8px; }
 table { width: 100%; border-collapse: collapse; min-width: 800px; }
@@ -150,6 +192,146 @@ th, td { border-bottom: 1px solid #eee; padding: 15px; text-align: center; font-
 th { background-color: #f9fafb; color: #333; font-weight: 600; }
 
 .qty-input { width: 80px; padding: 8px; text-align: right; border: 1px solid #ccc; border-radius: 4px; }
+
+
+/* =========================== 반응형 모달 팝업창 관련 CSS =========================== */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 16px;
+}
+
+.modal-body {
+  background-color: #ffffff;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 800px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+.modal-header h3 { margin: 0; font-size: 16px; color: #333; }
+.btn-close { background: none; border: none; font-size: 18px; cursor: pointer; color: #888; }
+
+/* 모달 내부 검색 필터 라인 */
+.modal-filters {
+  display: flex;
+  gap: 6px;
+  padding: 10px 16px;
+  background-color: #f1f3f5;
+}
+.modal-search-input {
+  flex: 1;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 13px;
+}
+.btn-modal-query {
+  padding: 0 14px;
+  background-color: #1e3a5f;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* 모달 내부 테이블 리스트 */
+.modal-content-area {
+  padding: 12px;
+  overflow-y: auto;
+}
+.modal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  table-layout: fixed;
+}
+.modal-table th {
+  background-color: #e9ecef;
+  padding: 8px;
+  font-weight: 600;
+  text-align: left;
+  border-bottom: 2px solid #dee2e6;
+}
+.modal-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #eee;
+  white-space: nowrap; /* 글자 길면 말줄임표 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+/* PC 기준 각 열 너비 맞춤 규칙 */
+.col-po-no { width: 170px; }
+.col-date  { width: 120px; }
+.col-summary { width: auto; }
+
+.modal-tr-row { cursor: pointer; transition: background 0.2s; }
+.modal-tr-row:hover { background-color: #f1f3f5; }
+.font-bold-blue { color: #0056b3; font-weight: bold; }
+.text-gray { color: #777; }
+
+/* ===================== 그리드 상단 컨트롤 바 스타일 (PC 기준) ===================== */
+.grid-control-bar {
+  display: flex;
+  justify-content: space-between; /* 타이틀은 왼쪽, 버튼은 오른쪽 배치 */
+  align-items: center;
+  margin-bottom: 6px;
+  padding: 0 2px;
+}
+
+.grid-title {
+  font-size: 14px;
+  font-weight: bold;
+  color: #333;
+}
+
+.btn-item-add {
+  background-color: #2b8a3e;
+  color: #ffffff;
+  border: none;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: background 0.2s;
+}
+
+.btn-item-add:hover {
+  background-color: #237032;
+}
+
+/* 모바일에서 안내 문구 숨기기용 기본 클래스 */
+.pc-only-text {
+  display: inline;
+}
+/* ===================== 그리드 상단 컨트롤 바 스타일 (PC 기준) ===================== */
+
+
 
 /* 버튼영역 */
 .btn-container {
@@ -190,23 +372,75 @@ th { background-color: #f9fafb; color: #333; font-weight: 600; }
 
 #mobileOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 99; }
 
-/* PC 화면일 때 */
-@media (min-width: 993px) {
-  .section-title {
-    font-size: 18px; 
-  }
+/* ================== 주문번호 검색 모달 ================== 상단 필터 50:50 좌우 분할 컨테이너 */
+.modal-filters-split {
+  display: flex;
+  gap: 10px;
+  background-color: #f8f9fa;
+  padding: 10px 12px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  border: 1px solid #e9ecef;
+  box-sizing: border-box;
 }
 
-/* 모바일 화면일 때 */
+/* 좌측 달력 파트 (50%) */
+.filter-side-date {
+  flex: 1;
+  min-width: 0;   /* 자식 요소 때문에 박스가 커지는 것 방지 */
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filter-side-date input[type="date"] {
+  flex: 1;
+  min-width: 0;   /* 모바일에서 화면이 줄어들 때 달력 인풋도 같이 줄어들게 */
+  height: 32px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  padding: 0 4px;
+  font-size: 12px;
+  color: #495057;
+}
+
+.date-dash {
+  color: #868e96;
+  font-size: 13px;
+  font-weight: bold;
+  flex-shrink: 0; /* 물결무늬 안찌그러지게 */
+}
+
+/* 우측 검색 파트 (50%) */
+.filter-side-search {
+  flex: 1;
+  min-width: 0;   /* 박스 넘침 방지 */
+  display: flex;
+  gap: 4px;
+}
+
+.filter-side-search .modal-search-input {
+  flex: 1;
+  min-width: 0;            /* 입력창이 50% 영역 안에서만 늘어나도록 통제 */
+  margin-bottom: 0 !important;
+  height: 32px;
+  padding: 0 8px;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.filter-side-search .btn-modal-query {
+  flex-shrink: 0;          /* 조회 버튼이 압축되면서 글자가 깨지는 것 방지 */
+  height: 32px;
+  padding: 0 10px;
+  font-size: 13px;
+  white-space: nowrap;     /* 글자가 아래로 떨어지는 것 방지 */
+}
+/* ================== 주문번호 검색 모달 ================== 상단 필터 50:50 좌우 분할 컨테이너 */
+
+
+/* 모바일 화면 css */
 @media (max-width: 992px) {
-  .form-grid {
-    grid-template-columns: 1fr;
-    gap: 8px;
-    margin-bottom: 10px;
-  }
-  .form-group input {
-    height: 34px; 
-  }
   .sidebar { position: fixed; left: 0; top: 0; bottom: 0; transform: translateX(-100%); transition: transform 0.3s; }
   .sidebar.open { transform: translateX(0); }
   .content { margin-left: 0; }
@@ -221,5 +455,99 @@ th { background-color: #f9fafb; color: #333; font-weight: 600; }
     width: 100%;
     height: 38px;
     font-size: 14px;
+  }
+  /* 상단 각 입력창 감싸는 박스 */
+  .form-grid { 
+    grid-template-columns: repeat(2, 1fr); 
+    gap: 8px; 
+    margin-bottom: 10px;
+  }
+  /* 첫 번째 자식(업체명)을 100% 채우기 위한 코드 */
+  .form-grid .form-group:nth-child(1) {
+    grid-column: span 2;
+  }
+  /* 2. 실제 상단 input 태그 (글자 입력창, 날짜 선택창 등) */
+  .form-group input,
+  .form-group select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 13px;
+    height: 32px;
+    min-width: 0;
+  }
+
+  /*=========================== 모달 팝업창 관련 CSS ===========================*/
+  .modal-overlay {
+    padding: 8px;
+  }
+  .modal-body {
+    max-height: 90vh;
+  }
+
+  .modal-table {
+    font-size: 11px;
+  }
+  .modal-table th {
+    padding: 6px 4px;
+  }
+  .modal-table td {
+    padding: 8px 4px;
+  }
+
+  /* 모바일에서는 긴 텍스트 설명 숨기기 */
+  .pc-only-text {
+    display: none;
+  }
+
+  .btn-item-add {
+    padding: 6px 14px; /* 모바일 터치를 위해 크기 살짝 키움 */
+    font-size: 12px;
+  }
+
+  /* 모바일 화면 전용 열 너비 재조정 (3열이 안 깨지고 한 화면에 나오도록 계산) */
+  .col-po-no   { width: 130px; }
+  .col-date    { width: 75px;  }
+  .col-summary { width: auto;  }
+
+  /* =========================== 주문서 검색 모달 상단 필터 50:50 좌우 분할 컨테이너 =========================== */
+  /* 모바일에서는 50:50 좌우 배치를 위아래 2줄로 전환 */
+  .modal-filters-split {
+    flex-direction: column; 
+    gap: 8px;
+    padding: 8px;
+  }
+
+  /* 좌측 날짜 파트: 모바일에서 가로 100% 꽉 채우기 */
+  .filter-side-date {
+    width: 100%;
+    flex: none;
+  }
+
+  /* 날짜 인풋창이 넉넉한 공간을 가질 수 있도록 폰트와 높이 보정 */
+  .filter-side-date input[type="date"] {
+    width: 100%;
+    height: 36px;       /* 터치하기 편하게 높이 살짝 확대 */
+    font-size: 13px;     /* 글자가 잘리지 않는 최적의 크기 */
+    padding: 0 6px;
+  }
+
+  /* 우측 검색 파트: 모바일에서 가로 100% 꽉 채우기 */
+  .filter-side-search {
+    width: 100%;
+    flex: none;
+  }
+
+  .filter-side-search .modal-search-input {
+    height: 36px;
+    font-size: 13px;
+  }
+
+  .filter-side-search .btn-modal-query {
+    height: 36px;
+    padding: 0 14px;
+    font-size: 13px;
   }
 }
