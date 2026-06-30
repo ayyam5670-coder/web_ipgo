@@ -30,7 +30,7 @@ export default function App() {
     return (
       <div id="loginWrapper">
         <div className="login-box">
-          <h2>협력사 포탈 로그인 (React)</h2>
+          <h2>협력사 포탈 로그인</h2>
           <form onSubmit={handleLogin}>
             <input 
               type="text" 
