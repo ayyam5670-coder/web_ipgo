@@ -3,6 +3,7 @@ import { AgGridReact } from 'ag-grid-react';
 import { AllCommunityModule, ModuleRegistry, ValidationModule, themeAlpine } from 'ag-grid-community'; 
 import type { ColDef, RowSelectionOptions } from 'ag-grid-community';
 import { Html5QrcodeScanner } from 'html5-qrcode';
+import { useEffect } from 'react';
 
 ModuleRegistry.registerModules([AllCommunityModule, ValidationModule]);
 
@@ -43,6 +44,9 @@ const itemMasterData = [
   { itemCode: '12345678', itemName: '테스트용 샘플 부품 A', unit: 'EA' }, 
   { itemCode: 'ABC-QR-99', itemName: '스마트 가전 모듈 B', unit: 'EA' }
 ];
+
+// 전역 변수로 html5QrScanner를 선언하여 스캐너 인스턴스를 관리
+let html5QrScanner: any = null;
 
 export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
   const gridRef = useRef<AgGridReact>(null);
@@ -165,7 +169,7 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
 
 
   /* ========================== QR/바코드 스캐너 관련 상태 및 함수 start ========================== */
-  const [scannedCode, setScannedCode] = useState(''); // input 박스 입력값 상태
+  // const [scannedCode, setScannedCode] = useState(''); // input 박스 입력값 상태
   const [isScannerOpen, setIsScannerOpen] = useState(false); // 카메라 화면 토글 상태
 
   // 1. QR/바코드 인식 또는 Input 엔터 입력 시 실행될 함수
@@ -186,11 +190,11 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
       handleAddItemToGrid(foundItem);
       
       // 모달창을 열어서 추가한 게 아니므로, 혹시 모를 모달 닫힘 로직이 오작동하지 않게 초기화만 진행
-      setScannedCode(''); 
+      // setScannedCode(''); 
     } else {
       // 3. ❌ 마스터 데이터에 없는 엉뚱한 바코드/QR일 경우 알림
       alert(`등록되지 않은 품목코드입니다: ${code}`);
-      setScannedCode('');
+      // setScannedCode('');
     }
   };
 
@@ -198,30 +202,63 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
   const toggleScanner = () => {
     if (!isScannerOpen) {
       setIsScannerOpen(true);
-      // 상태 변경 후 DOM이 그려진 뒤 스캐너를 시작해야 하므로 setTimeout 처리
+      
       setTimeout(() => {
-        const scanner = new Html5QrcodeScanner(
+        // 💡 전역 변수에 스캐너 인스턴스를 할당합니다.
+        html5QrScanner = new Html5QrcodeScanner(
           "qr-reader", 
           { fps: 10, qrbox: { width: 250, height: 250 } },
-          /* verbose= */ false
+          false
         );
         
-        scanner.render(
-          (decodedText) => { // 스캔 성공 시
-            setScannedCode(decodedText);
-            handleScanSubmit(decodedText); // 자동으로 엔터 효과(그리드 추가)
-            scanner.clear(); // 스캔 성공 후 카메라 닫기
+        html5QrScanner.render(
+          (decodedText: string) => {
+            handleScanSubmit(decodedText);
+            if (html5QrScanner) {
+              html5QrScanner.clear().catch((err: any) => console.error("스캐너 해제 실패:", err));
+            }
             setIsScannerOpen(false);
           },
-          (error) => { // 스캔 중 에러 (무시 가능)
-            console.warn(error);
+          (error: any) => {
+            // 💡 매 프레임 발생하는 단순 "QR 없음" 안내 텍스트는 필터링하고, 진짜 에러만 찍기
+            if (error && typeof error === 'string' && error.includes("NotFoundException")) {
+              return; // QR을 찾는 중일 때 나오는 흔한 예외는 무시해서 콘솔 청정구역 유지
+            }
+            
+            // ⭕ 카메라 권한 거부, 하드웨어 충돌 등 진짜 치명적인 에러만 콘솔에 기록합니다.
+            console.warn("스캐너 내부 경고/오류:", error);
           }
         );
       }, 100);
+
     } else {
-      setIsScannerOpen(false);
+      /* 🔥 [사용자가 직접 X 버튼이나 닫기를 눌렀을 때] 강제로 카메라 스트림을 죽여 메모리 반환 */
+      if (html5QrScanner) {
+        html5QrScanner.clear()
+          .then(() => {
+            html5QrScanner = null; // 메모리 참조 해제
+            setIsScannerOpen(false);
+          })
+          .catch((err: any) => {
+            console.error("카메라 강제 종료 중 에러:", err);
+            setIsScannerOpen(false); // 에러가 나더라도 우선 창은 닫음
+          });
+      } else {
+        setIsScannerOpen(false);
+      }
     }
   };
+
+  useEffect(() => {
+    return () => {
+      if (html5QrScanner) {
+        html5QrScanner.clear()
+          .then(() => { html5QrScanner = null; })
+          .catch((err: any) => console.error("페이지 이탈 시 스캐너 해제 실패:", err));
+      }
+    };
+  }, []);
+
   /* ========================== QR/바코드 스캐너 관련 상태 및 함수 end ========================== */
 
   return (
