@@ -5,6 +5,7 @@ import Sidebar from './Sidebar';
 import IpgoRegister from './IpgoRegister';
 import IpgoHistory from './IpgoHistory';
 import OrdrHistory from './OrdrHistory';
+import logoImg from '../src/images/SHTECH_logo.png';
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
@@ -52,7 +53,7 @@ export default function App() {
     <div id="mainContainer">
       {isSidebarOpen && <div id="mobileOverlay" onClick={() => setIsSidebarOpen(false)}></div>}
 
-      {/* 2. 조립된 사이드바 블록 배치 (Props 전달) */}
+      {/* 사이드바 블록 배치 (Props 전달) */}
       <Sidebar 
         activePage={activePage} 
         setActivePage={setActivePage} 
@@ -64,12 +65,16 @@ export default function App() {
       <div className="content">
         <div className="mobile-header">
           <button className="menu-toggle-btn" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>☰</button>
-          <div style={{ fontWeight: 'bold', color: '#1e3d59' }}>SH테크 자재관리 포탈</div>
+          <div className="mobile-title-wrap" style={{ fontWeight: 'bold', color: '#1e3d59', fontSize: '16px' }}>
+            <img src={logoImg} alt="로고" className="mobile-logo-img" />
+            <span className="sidebar-title">SH테크 자재관리 포탈</span>
+          </div>
+          {/* 로그아웃 등 우측 버튼 영역 */}
           <div style={{ width: '24px' }}></div>
         </div>
 
         <div className="content-body">
-          {/* 3. 현재 메뉴 상태에 따라 알맞은 화면 블록 띄우기 */}
+          {/* 메뉴 블록 추가 */}
           {activePage === 'register' && <IpgoRegister setActivePage={setActivePage} />}
           {activePage === 'history' && <IpgoHistory />}
           {activePage === 'orderHistory' && <OrdrHistory />}

@@ -42,6 +42,7 @@ body {
   height: 100vh;
 }
 
+/* ================================ 사이드바 스타일 start ================================ */
 .sidebar {
   width: var(--sidebar-width);
   background-color: #fff;
@@ -74,7 +75,28 @@ body {
   color: var(--primary-color);
   letter-spacing: 0.5px;
 }
+/* ================================ 사이드바 스타일 end ================================ */
 
+/* ================================ 모바일 타이틀 start ================================ */
+.mobile-header {
+  display: none; /* 부모 컴포넌트나 미디어쿼리에서 필요할 때 flex로 켜질 것입니다 */
+  background: white;
+  padding: 15px;
+  border-bottom: 1px solid #ddd;
+  align-items: center;
+  justify-content: space-between;
+}
+.mobile-title-wrap {
+  display: flex;
+  align-items: center; /* 💡 핵심: 로고와 글자 중심축을 완벽히 수평 정렬 */
+  gap: 8px;            /* 로고와 우측 텍스트 사이의 간격 */
+}
+.mobile-logo-img {
+  height: 1.2em;       /* 글자 크기(1em)보다 살짝만 크게 하여 조화롭게 맞춤 */
+  width: auto;         /* 가로 비율은 원본 이미지 유지 */
+  object-fit: contain;
+}
+/* ================================ 모바일 타이틀 end ================================ */
 
 .menu-group { padding: 20px 0; flex-grow: 1; }
 .menu-title { font-size: 12px; color: #999; font-weight: bold; padding: 0 20px; margin-bottom: 10px; }
@@ -93,7 +115,6 @@ body {
   flex-direction: column;
   height: 100%;
 }
-.mobile-header { display: none; background: white; padding: 15px; border-bottom: 1px solid #ddd; align-items: center; justify-content: space-between; }
 .menu-toggle-btn { background: none; border: none; font-size: 24px; color: var(--primary-color); cursor: pointer; }
 .content-body {
   padding: 10px;
@@ -186,10 +207,6 @@ body {
   background-color: #e9ecef;
 }
 
-.table-wrap { overflow-x: auto; width: 100%; margin-bottom: 30px; border: 1px solid #eee; border-radius: 8px; }
-table { width: 100%; border-collapse: collapse; min-width: 800px; }
-th, td { border-bottom: 1px solid #eee; padding: 15px; text-align: center; font-size: 14px; }
-th { background-color: #f9fafb; color: #333; font-weight: 600; }
 
 .qty-input { width: 80px; padding: 8px; text-align: right; border: 1px solid #ccc; border-radius: 4px; }
 
@@ -306,13 +323,47 @@ th { background-color: #f9fafb; color: #333; font-weight: 600; }
   color: #333;
 }
 
+/* ====================== 버튼 스타일 start ====================== */
+.btn-camera-scan {
+  background-color: #4a5568;
+  color: #fff;
+  border: none;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: background 0.2s;
+}
+
 .btn-item-add {
-  background-color: #2b8a3e;
+  background-color: #4dad61;
   color: #ffffff;
   border: none;
   padding: 5px 12px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 700;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: background 0.2s;
+}
+.btn-item-add:hover {
+  background-color: #237032;
+}
+
+.btn-item-delete {
+  background-color: #f03e3e;
+  color: #ffffff;
+  border: none;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 700;
   border-radius: 4px;
   cursor: pointer;
   display: flex;
@@ -321,18 +372,36 @@ th { background-color: #f9fafb; color: #333; font-weight: 600; }
   transition: background 0.2s;
 }
 
-.btn-item-add:hover {
-  background-color: #237032;
+.btn-print-action {
+  background-color: #4dabf7;
+  color: #fff;
+  border: none;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  padding: '6px 14px';
+  border-radius: '4px';
+  font-size: '12px';
+  font-weight: 'bold';
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: background 0.2s;
 }
+.btn-print-action:hover {
+  background-color: #339af0;
+}
+
+/* ====================== 버튼 스타일 end ====================== */
 
 /* 모바일에서 안내 문구 숨기기용 기본 클래스 */
 .pc-only-text {
   display: inline;
 }
+
 /* ===================== 그리드 상단 컨트롤 바 스타일 (PC 기준) ===================== */
-
-
-
 /* 버튼영역 */
 .btn-container {
   text-align: right;
@@ -439,6 +508,7 @@ th { background-color: #f9fafb; color: #333; font-weight: 600; }
 /* ================== 주문번호 검색 모달 ================== 상단 필터 50:50 좌우 분할 컨테이너 */
 
 
+
 /* 모바일 화면 css */
 @media (max-width: 992px) {
   .sidebar { position: fixed; left: 0; top: 0; bottom: 0; transform: translateX(-100%); transition: transform 0.3s; }
@@ -502,9 +572,22 @@ th { background-color: #f9fafb; color: #333; font-weight: 600; }
     display: none;
   }
 
+  /* 선택 삭제 버튼 스타일 */
+  .btn-item-delete {
+    padding: 2px 10px 0px 10px;
+    line-height: 1.8;
+    text-align: center;
+    max-width: 45px;
+    word-break: keep-all;
+  }
+
+  /* 품목 추가 버튼 스타일 */
   .btn-item-add {
-    padding: 6px 14px; /* 모바일 터치를 위해 크기 살짝 키움 */
-    font-size: 12px;
+    padding: 2px 10px 0px 10px;
+    line-height: 1.8;
+    text-align: center;
+    max-width: 45px;
+    word-break: keep-all;
   }
 
   /* 모바일 화면 전용 열 너비 재조정 (3열이 안 깨지고 한 화면에 나오도록 계산) */

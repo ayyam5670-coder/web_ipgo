@@ -1,12 +1,15 @@
-import React, { useState, useMemo, useRef } from 'react';
+/*import React, { useState, useMemo, useRef } from 'react';*/
+import { useState, useMemo, useRef } from 'react';
 import { AgGridReact } from 'ag-grid-react';
-import { themeAlpine } from 'ag-grid-community'; // 최신 테마 객체
+import { themeAlpine } from 'ag-grid-community';
 import type { ColDef, CellClickedEvent } from 'ag-grid-community';
+import { useReactToPrint } from 'react-to-print'; // 인쇄 라이브러리 hook 가져오기
+import { IpgoPrintSheet } from '../src/report/IpgoPrint'; // 인쇄 템플릿 컴포넌트
 
 const myCompactTheme = themeAlpine.withParams({
-  headerHeight: 32,       // 제목행 높이 (기본값은 48대 크기라 대폭 줄임)
-  rowHeight: 28,          // 데이터행 높이 (기본값보다 촘촘하게 설정)
-  fontSize: '12px',       // 텍스트 크기 조절
+  headerHeight: 32,
+  rowHeight: 28,
+  fontSize: '12px',
 });
 
 // 가상의 로그인된 사용자 정보
@@ -15,6 +18,7 @@ const loginUser = {
   compCode: 'C001',
   compName: '(주)한국정밀'
 };
+
 
 // 가입고 내역 메인 그리드용 (마스터 정보)
 interface IpgoHistoryMaster {
@@ -39,7 +43,37 @@ interface IpgoHistoryDetail {
 
 export default function IpgoHistory() {
   const mainGridRef = useRef<AgGridReact>(null);
-  
+
+  const printComponentRef = useRef<HTMLDivElement>(null); // 💡 인쇄 타겟을 지정할 Ref
+
+  // 1. 현재 체크된 품목 데이터를 담아둘 상태 변수
+  const [printData, setPrintData] = useState<any[]>([]);
+
+  // 2. react-to-print 핵심 훅 트리거 정의
+  const handlePrintTrigger = useReactToPrint({
+    contentRef: printComponentRef, // 💡 인쇄 대상 Ref를 바인딩합니다.
+    documentTitle: '가입고_등록_내역서',
+  });
+
+  // 3. 인쇄 버튼을 눌렀을 때 작동하는 가공 핸들러 함수
+  const handlePrintHistory = () => {
+    const selectedNodes = mainGridRef.current?.api.getSelectedNodes();
+    const selectedData = selectedNodes?.map((node: any) => node.data) || [];
+
+    if (selectedData.length === 0) {
+      alert('인쇄할 가입고 내역을 목록에서 최소 1건 이상 선택해 주세요.');
+      return;
+    }
+
+    // A. 선택된 데이터를 상태에 바인딩
+    setPrintData(selectedData);
+
+    // B. React가 상태값 변경 후 렌더링할 시간을 준 뒤, 브라우저 인쇄 팝업을 호출합니다.
+    setTimeout(() => {
+      handlePrintTrigger();
+    }, 100);
+  };
+
   const getPastDate = (daysAgo: number) => {
     const d = new Date();
     d.setDate(d.getDate() - daysAgo);
@@ -56,9 +90,9 @@ export default function IpgoHistory() {
   const [modalRowData, setModalRowData] = useState<IpgoHistoryDetail[]>([]);
 
   const masterData: IpgoHistoryMaster[] = [
-    { ipgoNo: 'IG-20260629-001', poNo: 'PO-20260629-001', regDate: '2026-06-29', dueDate: '2026-06-30', ipgoDate: '2026-06-29', itemCountText: '브레이크 패드 외 1건', status: '입고완료' },
+    { ipgoNo: 'IG-20260629-001', poNo: 'PO-20260629-001', regDate: '2026-06-29', dueDate: '2026-06-30', ipgoDate: '2026-06-30', itemCountText: '브레이크 패드 외 1건', status: '입고완료' },
     { ipgoNo: 'IG-20260628-002', poNo: 'PO-20260628-004', regDate: '2026-06-28', dueDate: '2026-07-02', ipgoDate: '-', itemCountText: '조립용 플랜지 볼트 1건', status: '입고대기중' },
-    { ipgoNo: 'IG-20260625-001', poNo: 'PO-20260625-002', regDate: '2026-06-25', dueDate: '2026-06-27', ipgoDate: '2026-06-26', itemCountText: '가이드 레일 (우) 외 3건', status: '가입고진행중' },
+    { ipgoNo: 'IG-20260625-001', poNo: 'PO-20260625-002', regDate: '2026-06-25', dueDate: '2026-06-27', ipgoDate: '2026-06-28', itemCountText: '가이드 레일 (우) 외 3건', status: '가입고진행중' },
   ];
 
   const detailDataMap: Record<string, IpgoHistoryDetail[]> = {
@@ -110,7 +144,7 @@ export default function IpgoHistory() {
         fontWeight: '500'
       }
     },
-    { field: 'regDate', headerName: '등록일자', width: 110, cellStyle: { textAlign: 'center' } },
+    { field: 'regDate', headerName: '등록일', width: 110, cellStyle: { textAlign: 'center' } },
     { field: 'dueDate', headerName: '입고예정일', width: 110, cellStyle: { textAlign: 'center' } },
     { field: 'ipgoDate', headerName: '입고일', width: 110, cellStyle: { textAlign: 'center' } },
     { 
@@ -149,10 +183,12 @@ export default function IpgoHistory() {
       {/* 상단 필터바 */}
       <div className="filter-bar" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', backgroundColor: '#f8f9fa', padding: '12px', borderRadius: '6px', marginBottom: '15px', border: '1px solid #e9ecef' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#495057' }}>가입고일</label>
-          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={{ height: '32px', border: '1px solid #ced4da', borderRadius: '4px', padding: '0 8px', fontSize: '13px' }} />
+          <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#495057' }}>입고일</label>
+          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} 
+              style={{ height: '32px', border: '1px solid #ced4da', borderRadius: '4px', padding: '0 8px', fontSize: '13px' }} />
           <span style={{ fontSize: '13px', color: '#868e96' }}>~</span>
-          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={{ height: '32px', border: '1px solid #ced4da', borderRadius: '4px', padding: '0 8px', fontSize: '13px' }} />
+          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} 
+              style={{ height: '32px', border: '1px solid #ced4da', borderRadius: '4px', padding: '0 8px', fontSize: '13px' }} />
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -173,16 +209,42 @@ export default function IpgoHistory() {
 
       {/* 중앙 마스터 내역 그리드 영역 */}
       <div style={{ height: 'calc(100vh - 230px)', width: '100%' }}>
-        <div style={{ fontSize: '11px', color: '#868e96', marginBottom: '4px' }}>* '품목건수' 텍스트를 클릭하시면 상세 명세 모달이 열립니다.</div>
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          marginBottom: '6px' 
+        }}>
+          {/* 안내 메시지 */}
+          <div style={{ fontSize: '11px', color: '#868e96' }}>
+            * '품목건수' 텍스트를 클릭하시면 상세 명세 모달이 열립니다.
+          </div>
+
+          {/* 인쇄 버튼 */}
+          <button
+            type="button"
+            className="btn-print-action"
+            onClick={handlePrintHistory} // 클릭 시 실행할 인쇄 함수 연결
+          >
+            🖨️ 입고 내역서 인쇄
+          </button>
+        </div>
         <AgGridReact
           ref={mainGridRef}
           rowData={filteredRowData}
           columnDefs={columnDefs}
-          rowSelection={{ mode: 'singleRow' }}
+          // rowSelection={{ mode: 'singleRow' }}
           onCellClicked={onCellClicked}
           theme={myCompactTheme}
+          rowSelection={{ mode: 'multiRow', checkboxes: true, headerCheckbox: true }}
         />
       </div>
+      
+      {/* 실제 화면에는 전혀 안 보이지만, 인쇄 출력용 백그라운드 템플릿 영역 */}
+      <div style={{ display: 'none' }}>
+        <IpgoPrintSheet ref={printComponentRef} selectedData={printData} />
+      </div>
+
 
       {/* 상세 품목 목록 모달 팝업 */}
       {isModalOpen && (

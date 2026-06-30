@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useRef } from 'react';
+/*import React, { useState, useMemo, useRef } from 'react';*/
+import { useState, useMemo, useRef } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { themeAlpine } from 'ag-grid-community'; 
 import type { ColDef, CellClickedEvent } from 'ag-grid-community';
@@ -106,8 +107,8 @@ export default function OrdrHistory() {
   // 메인 발주 현황 그리드 컬럼 정의
   const [columnDefs] = useState<ColDef<OrderMaster>[]>([
     { field: 'poNo', headerName: '발주번호', width: 150, sortable: true, filter: true },
-    { field: 'poDate', headerName: '발주일자', width: 110, cellStyle: { textAlign: 'center' }, sortable: true },
-    { field: 'dueDate', headerName: '납기일자', width: 110, cellStyle: { textAlign: 'center' } },
+    { field: 'poDate', headerName: '발주일', width: 110, cellStyle: { textAlign: 'center' }, sortable: true },
+    { field: 'dueDate', headerName: '납기일', width: 110, cellStyle: { textAlign: 'center' } },
     { 
       field: 'itemCountText', 
       headerName: '품목건수', 

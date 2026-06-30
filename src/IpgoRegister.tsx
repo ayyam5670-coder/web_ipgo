@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { AllCommunityModule, ModuleRegistry, ValidationModule, themeAlpine } from 'ag-grid-community'; 
 import type { ColDef, RowSelectionOptions } from 'ag-grid-community';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 
 ModuleRegistry.registerModules([AllCommunityModule, ValidationModule]);
 
@@ -34,6 +35,15 @@ interface BomItem {
   unit: string;
 }
 
+// 테스트용 품목 마스터 더미 데이터
+// 실제 QR이나 바코드로 테스트할 값을 itemCode에 적어두세요!
+const itemMasterData = [
+  { itemCode: 'E20260624-006', itemName: 'WIRING_AX EV PE_H/LAMP_EXT LOW&HIGH', unit: 'EA' },
+  { itemCode: 'ITEM002', itemName: '신라면 20입', unit: 'BOX' },
+  { itemCode: '12345678', itemName: '테스트용 샘플 부품 A', unit: 'EA' }, 
+  { itemCode: 'ABC-QR-99', itemName: '스마트 가전 모듈 B', unit: 'EA' }
+];
+
 export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
   const gridRef = useRef<AgGridReact>(null);
   
@@ -57,12 +67,12 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
     { poNo: 'PO-20260515-001', compName: '대성기공', itemSummary: '에어 실린더 2건', poDate: '2026-05-15' },
   ];
 
-  const itemMasterData = [
-    { itemCode: 'ITEM-BOLT-001', itemName: '육각 볼트 M12', unit: 'EA' },
-    { itemCode: 'ITEM-NUT-005', itemName: '플랜지 너트 M12', unit: 'EA' },
-    { itemCode: 'ITEM-PAD-021', itemName: '방진 고무 패드 (대)', unit: 'BOX' },
-    { itemCode: 'ITEM-WASH-11', itemName: '평와셔 M12', unit: 'EA' },
-  ];
+  // const itemMasterData = [
+  //   { itemCode: 'ITEM-BOLT-001', itemName: '육각 볼트 M12', unit: 'EA' },
+  //   { itemCode: 'ITEM-NUT-005', itemName: '플랜지 너트 M12', unit: 'EA' },
+  //   { itemCode: 'ITEM-PAD-021', itemName: '방진 고무 패드 (대)', unit: 'BOX' },
+  //   { itemCode: 'ITEM-WASH-11', itemName: '평와셔 M12', unit: 'EA' },
+  // ];
 
   const [rowData, setRowData] = useState<BomItem[]>([]);
 
@@ -89,14 +99,30 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
     resizable: true,
     cellStyle: { fontSize: '12px', paddingLeft: '8px', paddingRight: '8px' }
   }), []);
-
+  
   const rowSelection = useMemo<RowSelectionOptions>(() => ({
     mode: 'multiRow',
     checkboxes: true,
     headerCheckbox: true
   }), []);
+  
+  const handleAddItemToGrid = (item: typeof itemMasterData[0]) => {
+    const newRow: BomItem = {
+      checkbox: false,
+      itemCode: item.itemCode,
+      itemName: item.itemName,
+      orderQty: 0,
+      prevIpgoQty: 0,
+      actualIpgoQty: 0,
+      needIpgoQty: 0,
+      currentQty: 1,
+      unit: item.unit
+    };
+    setRowData(prevRows => [...prevRows, newRow]);
+    setIsItemModalOpen(false);
+  };
 
-  // ✨ 품목 추가 후 가등록 리스트에서 선택된 품목들을 제외시키는 함수
+  // 품목 추가 후 가등록 리스트에서 선택된 품목들을 제외시키는 함수
   const handleRemoveItemFromGrid = () => {
     if (!gridRef.current?.api) return;
 
@@ -137,21 +163,66 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
     setIsPoModalOpen(false);
   };
 
-  const handleAddItemToGrid = (item: typeof itemMasterData[0]) => {
-    const newRow: BomItem = {
-      checkbox: false,
-      itemCode: item.itemCode,
-      itemName: item.itemName,
-      orderQty: 0,
-      prevIpgoQty: 0,
-      actualIpgoQty: 0,
-      needIpgoQty: 0,
-      currentQty: 1,
-      unit: item.unit
-    };
-    setRowData(prevRows => [...prevRows, newRow]);
-    setIsItemModalOpen(false);
+
+  /* ========================== QR/바코드 스캐너 관련 상태 및 함수 start ========================== */
+  const [scannedCode, setScannedCode] = useState(''); // input 박스 입력값 상태
+  const [isScannerOpen, setIsScannerOpen] = useState(false); // 카메라 화면 토글 상태
+
+  // 1. QR/바코드 인식 또는 Input 엔터 입력 시 실행될 함수
+  const handleScanSubmit = (code: string) => {
+    if (!code.trim()) return;
+  
+    console.log(`스캔/입력된 품목코드: ${code}`);
+
+    if (!code.trim()) return;
+
+    // 1. 💡 보유 중인 품목 마스터 데이터(itemMasterData)에서 스캔한 코드와 일치하는 품목 찾기
+    const foundItem = itemMasterData.find(
+      (item) => item.itemCode.toLowerCase() === code.trim().toLowerCase()
+    );
+
+    if (foundItem) {
+      // 2. ⭕ 찾았다면 기존에 만들어두신 추가 함수에 그대로 던져줍니다!
+      handleAddItemToGrid(foundItem);
+      
+      // 모달창을 열어서 추가한 게 아니므로, 혹시 모를 모달 닫힘 로직이 오작동하지 않게 초기화만 진행
+      setScannedCode(''); 
+    } else {
+      // 3. ❌ 마스터 데이터에 없는 엉뚱한 바코드/QR일 경우 알림
+      alert(`등록되지 않은 품목코드입니다: ${code}`);
+      setScannedCode('');
+    }
   };
+
+  // 2. 모바일 카메라 스캐너 토글 함수
+  const toggleScanner = () => {
+    if (!isScannerOpen) {
+      setIsScannerOpen(true);
+      // 상태 변경 후 DOM이 그려진 뒤 스캐너를 시작해야 하므로 setTimeout 처리
+      setTimeout(() => {
+        const scanner = new Html5QrcodeScanner(
+          "qr-reader", 
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          /* verbose= */ false
+        );
+        
+        scanner.render(
+          (decodedText) => { // 스캔 성공 시
+            setScannedCode(decodedText);
+            handleScanSubmit(decodedText); // 자동으로 엔터 효과(그리드 추가)
+            scanner.clear(); // 스캔 성공 후 카메라 닫기
+            setIsScannerOpen(false);
+          },
+          (error) => { // 스캔 중 에러 (무시 가능)
+            console.warn(error);
+          }
+        );
+      }, 100);
+    } else {
+      setIsScannerOpen(false);
+    }
+  };
+  /* ========================== QR/바코드 스캐너 관련 상태 및 함수 end ========================== */
 
   return (
     <div className="page-panel">
@@ -190,17 +261,48 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
         
         {/* 품목 명세 헤더 및 컨트롤 버튼 조합바 */}
         <div className="grid-control-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span className="grid-title">품목 명세 <span className="pc-only-text">('금회 납품수량'은 클릭하여 수정 가능)</span></span>
+          <span className="grid-title">
+            품목 명세 <span className="pc-only-text">('금회 납품수량'은 클릭하여 수정 가능)</span>
+          </span>
+          
+          {/* [신규 추가] 안내문구와 삭제버튼 사이: QR/바코드 입력 및 스캔 영역
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1, justifyContent: 'flex-end', marginRight: '12px' }}>
+            <input
+              type="text"
+              placeholder="품목코드 입력 (스캔)"
+              value={scannedCode}
+              onChange={(e) => setScannedCode(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleScanSubmit(scannedCode); 
+                }
+              }}
+              style={{ padding: '6px 10px', fontSize: '13px', border: '1px solid #ccc', borderRadius: '4px', width: '180px' }}
+            />
+            <button type="button" className="btn-camera-scan" onClick={toggleScanner} >
+              {isScannerOpen ? '카메라 닫기' : 'QR/바코드 스캔'}
+            </button>
+          </div> */}
+
           <div style={{ display: 'flex', gap: '6px' }}>
-            {/* 🔥 [추가] 품목 선택 삭제 버튼 */}
-            <button type="button" className="btn-item-delete" onClick={handleRemoveItemFromGrid} style={{ backgroundColor: '#f03e3e', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
-              🗑️ 선택 삭제
+            <button type="button" className="btn-camera-scan" onClick={toggleScanner} >
+              {isScannerOpen ? '카메라 닫기' : 'QR/바코드 스캔'}
+            </button>
+            <button type="button" className="btn-item-delete" onClick={handleRemoveItemFromGrid}>
+              선택 삭제
             </button>
             <button type="button" className="btn-item-add" onClick={() => setIsItemModalOpen(true)}>
-              ➕ 품목 추가
+              품목 추가
             </button>
           </div>
         </div>
+
+        {/* 카메라 화면 영역 */}
+        {/* {isScannerOpen && (
+          <div style={{ maxWidth: '400px', margin: '10px auto' }}>
+            <div id="qr-reader" style={{ width: '100%' }}></div>
+          </div>
+        )} */}
 
         <div style={{ flex: 1, minHeight: 250, width: '100%', marginBottom: 12 }}>
           <AgGridReact
@@ -304,6 +406,53 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
             </div>
           </div>
         )}
+
+        {/* ========================== QR/바코드 스캐너 팝업 영역 start ========================== */}
+        {isScannerOpen && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgba(0, 0, 0, 0.6)', /* 배경을 어둡게 처리 */
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 9999, /* 최상단에 띄우기 */
+            padding: '20px',
+            boxSizing: 'border-box'
+          }}>
+            <div style={{
+              backgroundColor: '#fff',
+              borderRadius: '8px',
+              padding: '20px',
+              width: '100%',
+              maxWidth: '450px',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+              position: 'relative'
+            }}>
+              {/* 팝업 헤더 타이틀 */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold' }}>📷 QR / 바코드 스캔</h3>
+                <button 
+                  type="button" 
+                  onClick={toggleScanner} /* 카메라 닫기 기능 연동 */
+                  style={{ border: 'none', background: 'none', fontSize: '20px', cursor: 'pointer', color: '#999' }}
+                >
+                  &times;
+                </button>
+              </div>
+
+              {/* html5-qrcode 스캐너가 그려질 영역 */}
+              <div id="qr-reader" style={{ width: '100%', overflow: 'hidden', borderRadius: '4px' }}></div>
+              
+              <p style={{ textAlign: 'center', fontSize: '12px', color: '#666', marginTop: '10px', marginBottom: 0 }}>
+                카메라 권한을 허용하고 바코드를 사각형 안에 맞춰주세요.
+              </p>
+            </div>
+          </div>
+        )} {/* ========================== QR/바코드 스캐너 팝업 영역 end ========================== */}
       </form>
     </div>
   );

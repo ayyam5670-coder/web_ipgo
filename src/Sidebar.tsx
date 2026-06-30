@@ -36,7 +36,7 @@ export default function Sidebar({
           className={`menu-item ${activePage === 'history' ? 'active' : ''}`} 
           onClick={() => { setActivePage('history'); setIsSidebarOpen(false); }}
         >
-          <span style={{ marginRight: '10px' }}>📋</span>가입고 내역 현황
+          <span style={{ marginRight: '10px' }}>📋</span>가입고 등록 내역
         </div>
 
         <div 
