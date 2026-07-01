@@ -4,6 +4,7 @@ import { AllCommunityModule, ModuleRegistry, ValidationModule, themeAlpine } fro
 import type { ColDef, RowSelectionOptions } from 'ag-grid-community';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { useEffect } from 'react';
+import axios from 'axios';
 
 ModuleRegistry.registerModules([AllCommunityModule, ValidationModule]);
 
@@ -26,32 +27,42 @@ interface IpgoRegisterProps {
 
 interface BomItem {
   checkbox: boolean;
+  itemGubn: string;
+  itemGrup: string;
   itemCode: string;
+  atskCode: string;
   itemName: string;
   orderQty: number;
   prevIpgoQty: number;
   actualIpgoQty: number;
   needIpgoQty: number; 
   currentQty: number;
-  unit: string;
 }
-
-// 테스트용 품목 마스터 더미 데이터
-const itemMasterData = [
-  { itemCode: 'E20260624-006', itemName: 'WIRING_AX EV PE_H/LAMP_EXT LOW&HIGH', unit: 'EA' },
-  { itemCode: 'ITEM002', itemName: '신라면 20입', unit: 'BOX' },
-  { itemCode: '12345678', itemName: '테스트용 샘플 부품 A', unit: 'EA' }, 
-  { itemCode: 'ABC-QR-99', itemName: '스마트 가전 모듈 B', unit: 'EA' }
-];
 
 // 전역 변수로 html5QrScanner를 선언하여 스캐너 인스턴스를 관리
 let html5QrScanner: any = null;
 
+interface DbItem {
+  itemGrup: string;  // 원자재/부자재
+  itemGubn: string;  // 품목구분
+  itemCode: string;   // 품목코드 (필수)
+  atskCode: string;  // 품번
+  itemName: string;   // 품명 (필수)
+}
+
+
 export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
   const gridRef = useRef<AgGridReact>(null);
+  const [isScannerOpen, setIsScannerOpen] = useState(false); // 카메라 화면 토글 상태
+  const [rowData, setRowData] = useState<BomItem[]>([]);
   
-  const [isPoModalOpen, setIsPoModalOpen] = useState(false);
+  // 품목 추가 모달, DB의 품목 리스트 저장할 상태
+  const [dbItemList, setDbItemList] = useState<DbItem[]>([]);
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);     // 로딩 상태 관리
+
+  const [isPoModalOpen, setIsPoModalOpen] = useState(false);
+  
   const [selectedPoNo, setSelectedPoNo] = useState('');
 
   const getPastDate = (daysAgo: number) => {
@@ -63,6 +74,27 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
   const [poEndDate, setPoEndDate] = useState(getPastDate(0));
   const [poSearchText, setPoSearchText] = useState('');
 
+
+  // =================================== 모달창 열릴 때 전체 품목 조회 함수
+  const handleOpenProductModal = async () => {
+    setIsItemModalOpen(true);
+    setIsLoading(true);
+    
+    try {
+      // 파이썬 FastAPI 서버의 전체 품목 조회 주소
+      const response = await axios.get('http://127.0.0.1:8000/api/ipgo/items');
+      
+      // 서버가 준 데이터로 상태 업데이트 -> 모달 그리드에 바인딩됨
+      setDbItemList(response.data); // 서버에서 받아온 데이터를 자바스크립트 배열 상태인 response.data로 넘겨주고 setDbItemList 함수 실행하면 dbItemList 배열 변수에 저장
+    } catch (error) {
+      console.error("전체 품목 조회 실패:", error);
+      alert("서버에서 품목 리스트를 가져오지 못했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
   const poData = [
     { poNo: 'PO-20260629-001', compName: '(주)한국정밀', itemSummary: '브레이크 패드 외 2건', poDate: '2026-06-29' },
     { poNo: 'PO-20260625-004', compName: '(주)한국정밀', itemSummary: '조립용 플랜지 볼트 1건', poDate: '2026-06-25' },
@@ -70,7 +102,7 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
     { poNo: 'PO-20260515-001', compName: '대성기공', itemSummary: '에어 실린더 2건', poDate: '2026-05-15' },
   ];
 
-  const [rowData, setRowData] = useState<BomItem[]>([]);
+  
 
   const [columnDefs] = useState<ColDef[]>([
     { field: 'itemCode', headerName: '품번', width: 120, sortable: true, filter: true },
@@ -102,17 +134,19 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
     headerCheckbox: true
   }), []);
   
-  const handleAddItemToGrid = (item: typeof itemMasterData[0]) => {
+  const handleAddItemToGrid = (item: DbItem) => {
     const newRow: BomItem = {
       checkbox: false,
+      itemGubn: item.itemGubn || '원자재', // 만약 DB에 gubn이 없으면 임시 텍스트
+      itemGrup: item.itemGrup || '',
       itemCode: item.itemCode,
+      atskCode: item.atskCode,
       itemName: item.itemName,
       orderQty: 0,
       prevIpgoQty: 0,
       actualIpgoQty: 0,
       needIpgoQty: 0,
       currentQty: 1,
-      unit: item.unit
     };
     setRowData(prevRows => [...prevRows, newRow]);
     setIsItemModalOpen(false);
@@ -151,8 +185,8 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
 
   const handleSelectPo = (poNo: string) => {
     const dummyPoItems: BomItem[] = [
-      { checkbox: false, itemCode: 'BRK-FRONT-01', itemName: '브레이크 패드 (앞)', orderQty: 2000, prevIpgoQty: 500, actualIpgoQty: 500, needIpgoQty: 1500, currentQty: 1500, unit: 'EA' },
-      { checkbox: false, itemCode: 'BOLT-M08-L20', itemName: '조립용 플랜지 볼트', orderQty: 5000, prevIpgoQty: 2000, actualIpgoQty: 1500, needIpgoQty: 3500, currentQty: 3500, unit: 'EA' }
+      // { checkbox: false, itemCode: 'BRK-FRONT-01', itemName: '브레이크 패드 (앞)', orderQty: 2000, prevIpgoQty: 500, actualIpgoQty: 500, needIpgoQty: 1500, currentQty: 1500, unit: 'EA' },
+      // { checkbox: false, itemCode: 'BOLT-M08-L20', itemName: '조립용 플랜지 볼트', orderQty: 5000, prevIpgoQty: 2000, actualIpgoQty: 1500, needIpgoQty: 3500, currentQty: 3500, unit: 'EA' }
     ];
     setSelectedPoNo(poNo);
     setRowData(dummyPoItems);
@@ -161,33 +195,32 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
 
 
   /* ========================== QR/바코드 스캐너 관련 상태 및 함수 start ========================== */
-  // const [scannedCode, setScannedCode] = useState(''); // input 박스 입력값 상태
-  const [isScannerOpen, setIsScannerOpen] = useState(false); // 카메라 화면 토글 상태
-
   // 1. QR/바코드 인식 또는 Input 엔터 입력 시 실행될 함수
-  const handleScanSubmit = (code: string) => {
+  const handleScanSubmit = async(code: string) => {
     if (!code.trim()) return;
   
-    console.log(`스캔/입력된 품목코드: ${code}`);
+    // console.log(`스캔/입력된 품목코드: ${code}`);
 
     if (!code.trim()) return;
 
-    // 1. 보유 중인 품목 마스터 데이터(itemMasterData)에서 스캔한 코드와 일치하는 품목 찾기
-    const foundItem = itemMasterData.find(
-      (item) => item.itemCode.toLowerCase() === code.trim().toLowerCase()
-    );
+    try {
+      // 파이썬 FastAPI 서버의 개별 품목 조회 주소 찌르기
+      const response = await axios.get(`http://127.0.0.1:8000/api/ipgo/items/${code}`);
+      const foundItem = response.data;
 
-    if (foundItem) {
-      // 2. 기존에 만들어둔 추가 함수에 그대로 던짐
-      handleAddItemToGrid(foundItem);
-
-    } else {
-      // 3. 마스터 데이터에 없는 엉뚱한 바코드/QR일 경우 알림
-      alert(`등록되지 않은 품목코드입니다: ${code}`);
+      if (foundItem) {
+        handleAddItemToGrid(foundItem);
+      }
+    } catch (error: any) {
+      if (error.response && error.response.status === 404) {
+        alert("DB에 등록되지 않은 품목코드입니다.");
+      } else {
+        alert("서버 통신 오류가 발생했습니다.");
+      }
     }
   };
 
-  // 2. 모바일 카메라 스캐너 토글 함수
+  // 모바일 카메라 스캐너 토글 함수
   const toggleScanner = () => {
     if (!isScannerOpen) {
       setIsScannerOpen(true);
@@ -238,6 +271,7 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
     }
   };
 
+  // 클린업 - 페이지 이탈 시 스캐너 해제 및 메모리 반환
   useEffect(() => {
     return () => {
       if (html5QrScanner) {
@@ -249,6 +283,10 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
   }, []);
 
   /* ========================== QR/바코드 스캐너 관련 상태 및 함수 end ========================== */
+
+
+
+
 
   return (
     <div className="page-panel">
@@ -291,24 +329,6 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
             품목 명세 <span className="pc-only-text">('금회 납품수량'은 클릭하여 수정 가능)</span>
           </span>
           
-          {/* 안내문구와 삭제버튼 사이: QR/바코드 입력 및 스캔 영역
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1, justifyContent: 'flex-end', marginRight: '12px' }}>
-            <input
-              type="text"
-              placeholder="품목코드 입력 (스캔)"
-              value={scannedCode}
-              onChange={(e) => setScannedCode(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  handleScanSubmit(scannedCode); 
-                }
-              }}
-              style={{ padding: '6px 10px', fontSize: '13px', border: '1px solid #ccc', borderRadius: '4px', width: '180px' }}
-            />
-            <button type="button" className="btn-camera-scan" onClick={toggleScanner} >
-              {isScannerOpen ? '카메라 닫기' : 'QR/바코드 스캔'}
-            </button>
-          </div> */}
 
           <div style={{ display: 'flex', gap: '6px' }}>
             <button type="button" className="btn-camera-scan" onClick={toggleScanner} >
@@ -317,18 +337,11 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
             <button type="button" className="btn-item-delete" onClick={handleRemoveItemFromGrid}>
               선택 삭제
             </button>
-            <button type="button" className="btn-item-add" onClick={() => setIsItemModalOpen(true)}>
+            <button type="button" className="btn-add-product" onClick={handleOpenProductModal} >
               품목 추가
             </button>
           </div>
         </div>
-
-        {/* 카메라 화면 영역 */}
-        {/* {isScannerOpen && (
-          <div style={{ maxWidth: '400px', margin: '10px auto' }}>
-            <div id="qr-reader" style={{ width: '100%' }}></div>
-          </div>
-        )} */}
 
         <div style={{ flex: 1, minHeight: 250, width: '100%', marginBottom: 12 }}>
           <AgGridReact
@@ -397,7 +410,7 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
           </div>
         )}
 
-        {/* 품목 모달 */}
+        {/* 품목추가 버튼 모달 */}
         {isItemModalOpen && (
           <div className="modal-overlay" onClick={() => setIsItemModalOpen(false)}>
             <div className="modal-body" onClick={(e) => e.stopPropagation()}>
@@ -405,29 +418,51 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
                 <h3>추가 품목 검색</h3>
                 <button type="button" className="btn-close" onClick={() => setIsItemModalOpen(false)}>✕</button>
               </div>
-              <div className="modal-filters">
+              <div className="modal-filters" style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                
                 <input type="text" placeholder="품번 또는 품명 검색..." className="modal-search-input" />
                 <button type="button" className="btn-modal-query">조회</button>
               </div>
               <div className="modal-content-area">
-                <table className="modal-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: '130px' }}>품목코드</th>
-                      <th>품목명</th>
-                      <th style={{ width: '70px' }}>단위</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {itemMasterData.map((item, idx) => (
-                      <tr key={idx} className="modal-tr-row" onClick={() => handleAddItemToGrid(item)}>
-                        <td className="font-bold-blue">{item.itemCode}</td>
-                        <td>{item.itemName}</td>
-                        <td>{item.unit}</td>
+                
+                {isLoading ? (
+                  <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
+                    데이터를 불러오는 중입니다...
+                  </div>
+                ) : (
+                  <table className="modal-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '70px' }}>품목유형</th>
+                        <th style={{ width: '70px' }}>구분</th>
+                        <th style={{ width: '130px' }}>코드</th>
+                        <th style={{ width: '130px' }}>품번</th>
+                        <th>품명</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {/* 서버에서 받아온 [dbItemList]로 매핑 */}
+                      {dbItemList.map((item, idx) => (
+                        <tr 
+                          key={idx} 
+                          className="modal-tr-row" 
+                          onClick={() => {
+                            handleAddItemToGrid(item);
+                            setIsItemModalOpen(false);
+                          }}
+                        >
+                          {/* 파이썬 API 서버가 보내주는 데이터 필드명에 맞춰 바인딩 */}
+                          <td>{item.itemGubn || '원자재'}</td> {/* 만약 DB에 gubn이 없으면 임시 텍스트 */}
+                          <td>{item.itemGrup || ''}</td>
+                          <td className="font-bold-blue">{item.itemCode}</td>
+                          <td className="font-bold-blue">{item.atskCode || '-'}</td>
+                          <td>{item.itemName}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                
               </div>
             </div>
           </div>
