@@ -4,7 +4,7 @@ import { AgGridReact } from 'ag-grid-react';
 import { themeAlpine } from 'ag-grid-community'; 
 import type { ColDef, CellClickedEvent } from 'ag-grid-community';
 
-// 최신 Alpine 테마 기반 콤팩트 스타일 설정 (기존 화면들과 통일)
+// 최신 Alpine 테마 기반 콤팩트 스타일 설정
 const myCompactTheme = themeAlpine.withParams({
   headerHeight: 32,
   rowHeight: 28,
@@ -20,21 +20,21 @@ const loginUser = {
 
 // 발주 마스터 데이터 구조
 interface OrderMaster {
-  poNo: string;         // 발주번호 (주문번호)
-  poDate: string;       // 발주일자
-  dueDate: string;      // 납기일자
-  itemCountText: string;// 품목건수
-  totalOrderQty: number;// 총 발주수량
-  remainQty: number;    // 미입고수량
-  isClosed: '진행중' | '종결'; // 종결여부
+  poNo: string;
+  poDate: string;
+  dueDate: string;
+  itemCountText: string;
+  totalOrderQty: number;
+  remainQty: number;
+  isClosed: '진행중' | '종결';
 }
 
 // 발주 상세 품목 데이터 구조
 interface OrderDetail {
   itemCode: string;
   itemName: string;
-  orderQty: number;     // 발주수량
-  remainQty: number;    // 미입고수량
+  orderQty: number;
+  remainQty: number;
   unit: string;
 }
 
@@ -58,7 +58,7 @@ export default function OrdrHistory() {
   const [selectedPoNo, setSelectedPoNo] = useState('');
   const [modalRowData, setModalRowData] = useState<OrderDetail[]>([]);
 
-  // 📊 가상의 원본 발주 데이터 (다른 화면의 PO 데이터 포맷과 유기적 연동되도록 매칭)
+  // 가상의 원본 발주 데이터 (다른 화면의 PO 데이터 포맷과 유기적 연동되도록 매칭)
   const orderMasterData: OrderMaster[] = [
     { poNo: 'PO-20260629-001', poDate: '2026-06-29', dueDate: '2026-07-05', itemCountText: '브레이크 패드 외 2건', totalOrderQty: 7000, remainQty: 5000, isClosed: '진행중' },
     { poNo: 'PO-20260625-004', poDate: '2026-06-25', dueDate: '2026-06-30', itemCountText: '조립용 플랜지 볼트 1건', totalOrderQty: 3000, remainQty: 0, isClosed: '종결' },
@@ -94,7 +94,7 @@ export default function OrdrHistory() {
     });
   }, [startDate, endDate, searchPoNo, searchStatus]);
 
-  // ✨ 품목건수 원클릭 상세조회 팝업 핸들러
+  // 품목건수 원클릭 상세조회 팝업 핸들러
   const onCellClicked = (event: CellClickedEvent<OrderMaster>) => {
     if (event.colDef?.field === 'itemCountText' && event.data) {
       const poNo = event.data.poNo;
@@ -179,7 +179,7 @@ export default function OrdrHistory() {
         </div>
       </div>
 
-      {/* 📊 중앙 메인 발주 내역 그리드 */}
+      {/* 중앙 메인 발주 내역 그리드 */}
       <div style={{ height: 'calc(100vh - 230px)', width: '100%' }}>
         <div style={{ fontSize: '11px', color: '#868e96', marginBottom: '4px' }}>* '품목건수' 텍스트를 클릭하시면 상세 발주 내역 모달이 열립니다.</div>
         <AgGridReact
@@ -187,8 +187,8 @@ export default function OrdrHistory() {
           rowData={filteredRowData}
           columnDefs={columnDefs}
         //   rowSelection={{ mode: 'none' }}
-          onCellClicked={onCellClicked} // 원클릭 이벤트 연동
-          theme={myCompactTheme}       // 통일된 슬림 테마 스타일 주입
+          onCellClicked={onCellClicked}
+          theme={myCompactTheme}
         />
       </div>
 

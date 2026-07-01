@@ -44,14 +44,14 @@ interface IpgoHistoryDetail {
 export default function IpgoHistory() {
   const mainGridRef = useRef<AgGridReact>(null);
 
-  const printComponentRef = useRef<HTMLDivElement>(null); // 💡 인쇄 타겟을 지정할 Ref
+  const printComponentRef = useRef<HTMLDivElement>(null);
 
   // 1. 현재 체크된 품목 데이터를 담아둘 상태 변수
   const [printData, setPrintData] = useState<any[]>([]);
 
   // 2. react-to-print 핵심 훅 트리거 정의
   const handlePrintTrigger = useReactToPrint({
-    contentRef: printComponentRef, // 💡 인쇄 대상 Ref를 바인딩합니다.
+    contentRef: printComponentRef, // 인쇄 대상 Ref를 바인딩합니다.
     documentTitle: '가입고_등록_내역서',
   });
 
@@ -224,7 +224,7 @@ export default function IpgoHistory() {
           <button
             type="button"
             className="btn-print-action"
-            onClick={handlePrintHistory} // 클릭 시 실행할 인쇄 함수 연결
+            onClick={handlePrintHistory}
           >
             🖨️ 입고 내역서 인쇄
           </button>

@@ -37,7 +37,6 @@ interface BomItem {
 }
 
 // 테스트용 품목 마스터 더미 데이터
-// 실제 QR이나 바코드로 테스트할 값을 itemCode에 적어두세요!
 const itemMasterData = [
   { itemCode: 'E20260624-006', itemName: 'WIRING_AX EV PE_H/LAMP_EXT LOW&HIGH', unit: 'EA' },
   { itemCode: 'ITEM002', itemName: '신라면 20입', unit: 'BOX' },
@@ -70,13 +69,6 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
     { poNo: 'PO-20260620-002', compName: '삼우정밀', itemSummary: '가이드 레일 (우) 외 5건', poDate: '2026-06-20' },
     { poNo: 'PO-20260515-001', compName: '대성기공', itemSummary: '에어 실린더 2건', poDate: '2026-05-15' },
   ];
-
-  // const itemMasterData = [
-  //   { itemCode: 'ITEM-BOLT-001', itemName: '육각 볼트 M12', unit: 'EA' },
-  //   { itemCode: 'ITEM-NUT-005', itemName: '플랜지 너트 M12', unit: 'EA' },
-  //   { itemCode: 'ITEM-PAD-021', itemName: '방진 고무 패드 (대)', unit: 'BOX' },
-  //   { itemCode: 'ITEM-WASH-11', itemName: '평와셔 M12', unit: 'EA' },
-  // ];
 
   const [rowData, setRowData] = useState<BomItem[]>([]);
 
@@ -180,21 +172,18 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
 
     if (!code.trim()) return;
 
-    // 1. 💡 보유 중인 품목 마스터 데이터(itemMasterData)에서 스캔한 코드와 일치하는 품목 찾기
+    // 1. 보유 중인 품목 마스터 데이터(itemMasterData)에서 스캔한 코드와 일치하는 품목 찾기
     const foundItem = itemMasterData.find(
       (item) => item.itemCode.toLowerCase() === code.trim().toLowerCase()
     );
 
     if (foundItem) {
-      // 2. ⭕ 찾았다면 기존에 만들어두신 추가 함수에 그대로 던져줍니다!
+      // 2. 기존에 만들어둔 추가 함수에 그대로 던짐
       handleAddItemToGrid(foundItem);
-      
-      // 모달창을 열어서 추가한 게 아니므로, 혹시 모를 모달 닫힘 로직이 오작동하지 않게 초기화만 진행
-      // setScannedCode(''); 
+
     } else {
-      // 3. ❌ 마스터 데이터에 없는 엉뚱한 바코드/QR일 경우 알림
+      // 3. 마스터 데이터에 없는 엉뚱한 바코드/QR일 경우 알림
       alert(`등록되지 않은 품목코드입니다: ${code}`);
-      // setScannedCode('');
     }
   };
 
@@ -204,7 +193,7 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
       setIsScannerOpen(true);
       
       setTimeout(() => {
-        // 💡 전역 변수에 스캐너 인스턴스를 할당합니다.
+        // 전역 변수에 스캐너 인스턴스를 할당
         html5QrScanner = new Html5QrcodeScanner(
           "qr-reader", 
           { fps: 10, qrbox: { width: 250, height: 250 } },
@@ -220,19 +209,19 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
             setIsScannerOpen(false);
           },
           (error: any) => {
-            // 💡 매 프레임 발생하는 단순 "QR 없음" 안내 텍스트는 필터링하고, 진짜 에러만 찍기
+            // 매 프레임 발생하는 단순 "QR 없음" 안내 텍스트는 필터링, 진짜 에러만 찍기
             if (error && typeof error === 'string' && error.includes("NotFoundException")) {
               return; // QR을 찾는 중일 때 나오는 흔한 예외는 무시해서 콘솔 청정구역 유지
             }
             
-            // ⭕ 카메라 권한 거부, 하드웨어 충돌 등 진짜 치명적인 에러만 콘솔에 기록합니다.
+            // 카메라 권한 거부, 하드웨어 충돌 등 치명적인 에러만 콘솔에 기록
             console.warn("스캐너 내부 경고/오류:", error);
           }
         );
       }, 100);
 
     } else {
-      /* 🔥 [사용자가 직접 X 버튼이나 닫기를 눌렀을 때] 강제로 카메라 스트림을 죽여 메모리 반환 */
+      /* [사용자가 직접 X 버튼이나 닫기를 눌렀을 때] 강제로 카메라 스트림을 죽여 메모리 반환 */
       if (html5QrScanner) {
         html5QrScanner.clear()
           .then(() => {
@@ -302,7 +291,7 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
             품목 명세 <span className="pc-only-text">('금회 납품수량'은 클릭하여 수정 가능)</span>
           </span>
           
-          {/* [신규 추가] 안내문구와 삭제버튼 사이: QR/바코드 입력 및 스캔 영역
+          {/* 안내문구와 삭제버튼 사이: QR/바코드 입력 및 스캔 영역
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1, justifyContent: 'flex-end', marginRight: '12px' }}>
             <input
               type="text"
@@ -361,7 +350,7 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
           <button type="submit" className="btn-submit">가입고 정보 등록</button>
         </div>
 
-        {/* 발주서 모달 생략 (기존과 동일) */}
+        {/* 발주서 모달 */}
         {isPoModalOpen && (
           <div className="modal-overlay" onClick={() => setIsPoModalOpen(false)}>
             <div className="modal-body" onClick={(e) => e.stopPropagation()}>
@@ -408,7 +397,7 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
           </div>
         )}
 
-        {/* 품목 모달 생략 (기존과 동일) */}
+        {/* 품목 모달 */}
         {isItemModalOpen && (
           <div className="modal-overlay" onClick={() => setIsItemModalOpen(false)}>
             <div className="modal-body" onClick={(e) => e.stopPropagation()}>

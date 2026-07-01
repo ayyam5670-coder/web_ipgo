@@ -3,15 +3,15 @@ import Barcode from 'react-barcode';
 import { QRCodeSVG } from 'qrcode.react';
 
 interface PrintItem {
-  ipgoNo: string;       // 가입고번호
-  ordrNo: string;       // 주문번호
-  itemCode: string;     // 품목코드
-  itemName: string;     // 품목명
-  spec: string;         // 규격
-  qty: number;          // 납품수량
-  unit: string;         // 단위
-  ipgoDate: string;     // 입고일자
-  ordrDate: string;     // 발주일자
+  ipgoNo: string;
+  ordrNo: string;
+  itemCode: string;
+  itemName: string;
+  spec: string;
+  qty: number;
+  unit: string;
+  ipgoDate: string;
+  ordrDate: string;
 }
 
 interface IpgoPrintSheetProps {
@@ -26,10 +26,10 @@ export const IpgoPrintSheet = React.forwardRef<HTMLDivElement, IpgoPrintSheetPro
     });
 
     return (
-      /* 최상단 컨테이너: 외부 여백을 일절 주지 않아 2페이지부터 밀리는 현상을 방지합니다. */
+      /* 최상단 컨테이너: 외부 여백을 일절 주지 않아 2페이지부터 밀리는 현상을 방지 */
       <div ref={ref} style={{ color: '#000', backgroundColor: '#fff', width: '100%' }}>
         
-        {/* 브라우저 인쇄 엔진 제어용 최소한의 미디어 쿼리만 남겨둡니다. */}
+        {/* 브라우저 인쇄 엔진 제어용 최소한의 미디어 쿼리만 남김 */}
         <style>{`
           @media print {
             body { background: none; }
@@ -40,7 +40,6 @@ export const IpgoPrintSheet = React.forwardRef<HTMLDivElement, IpgoPrintSheetPro
         `}</style>
 
         {selectedData.map((item, index) => {
-          /* 💡 안정적인 하단 배치를 위해 22줄 대신 일단 15줄로 기준을 잡고 시작합니다. */
           const TOTAL_ROWS = 20; 
           const totalQty = item.qty || 0; 
 
@@ -137,7 +136,7 @@ export const IpgoPrintSheet = React.forwardRef<HTMLDivElement, IpgoPrintSheetPro
                 alignItems: 'flex-end'
               }}>
                 <div style={{ fontSize: '11px', color: '#333', lineHeight: '1.6' }}>
-                  * 본 명세서는 SH자재관리 포탈 시스템에서 출력되었습니다.
+                  * 본 명세서는 SH테크 자재관리 포탈 시스템에서 출력되었습니다.
                 </div>
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: '10px', marginBottom: '4px', fontWeight: 'bold' }}>모바일 조회 QR</div>
