@@ -56,11 +56,11 @@ interface gubnCode {
   name: string;
 }
 
-interface PoMaster {
-  poNo: string;
+interface ordrMaster {
+  ordrNumb: string;
   compName: string;
   itemSummary: string;
-  poDate: string;
+  ordrDate: string;
 }
 
 /* ========================================================================================================================================= */
@@ -74,10 +74,10 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);     // 로딩 상태 관리
 
-  const [isPoModalOpen, setIsPoModalOpen] = useState(false);
-  const [poData, setPoData] = useState<PoMaster[]>([]);
-  const [isPoLoading, setIsPoLoading] = useState(false); // 조회 상태 분리
-  const [selectedPoNo, setSelectedPoNo] = useState('');
+  const [isOrdrModalOpen, setIsOrdrModalOpen] = useState(false);
+  const [ordrData, setOrdrData] = useState<ordrMaster[]>([]);
+  const [isOrdrLoading, setIsOrdrLoading] = useState(false); // 조회 상태 분리
+  const [selectedOrdrNo, setSelectedOrdrNo] = useState('');
 
   const [itemSearchText, setItemSearchText] = useState(''); // 품목 검색어 상태
 
@@ -86,46 +86,46 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
     d.setDate(d.getDate() - daysAgo);
     return d.toISOString().split('T')[0];
   };
-  const [poStartDate, setPoStartDate] = useState(getPastDate(7));
-  const [poEndDate, setPoEndDate] = useState(getPastDate(0));
-  const [poSearchText, setPoSearchText] = useState('');
+  const [ordrStartDate, setOrdrStartDate] = useState(getPastDate(7));
+  const [ordrEndDate, setOrdrEndDate] = useState(getPastDate(0));
+  const [ordrSearchText, setOrdrSearchText] = useState('');
 
 
   /* ========================= 발주서 모달 관련 상태 및 함수 start ========================== */
   // 발주서 모달 오픈 또는 발주서 조회버튼
-  const handleFetchPoList = async () => {
-    setIsPoLoading(true);
+  const handleFetchOrdrList = async () => {
+    setIsOrdrLoading(true);
     try {
       // 기간 및 검색어를 쿼리 파라미터로 포함하여 백엔드 호출
-      const response = await axios.get('http://127.0.0.1:8000/api/ipgo/po', {
+      const response = await axios.get('http://127.0.0.1:8000/api/ipgo/ordr', {
         params: {
-          startDate: poStartDate,
-          endDate: poEndDate,
-          searchText: poSearchText
+          startDate: ordrStartDate,
+          endDate: ordrEndDate,
+          searchText: ordrSearchText
         }
       });
-      setPoData(response.data); // 서버에서 가져온 발주 마스터 리스트
+      setOrdrData(response.data); // 서버에서 가져온 발주 마스터 리스트
     } catch (error) {
       console.error("발주서 목록 조회 실패:", error);
       alert("발주서 목록을 가져오지 못했습니다.");
     } finally {
-      setIsPoLoading(false);
+      setIsOrdrLoading(false);
     }
   };
 
-  const filteredPoData = useMemo(() => {
-    return poData;
-  }, [poData]);
+  const filteredOrdrData = useMemo(() => {
+    return ordrData;
+  }, [ordrData]);
 
   // 발주 선택 시 상세 품목(Item) 리스트를 조회 후 메인 그리드에 바인딩
-  const handleSelectPo = async (poNo: string) => {
+  const handleSelectOrdr = async (ordrNumb: string) => {
     try {
       // 선택한 발주번호에 종속된 발주 품목 상세 API 호출
-      const response = await axios.get(`http://127.0.0.1:8000/api/ipgo/po/${poNo}/items`);
+      const response = await axios.get(`http://127.0.0.1:8000/api/ipgo/Ordr/${ordrNumb}/items`);
       
-      setSelectedPoNo(poNo);
+      setSelectedOrdrNo(ordrNumb);
       setRowData(response.data); // 받아온 품목 리스트를 가입고 등록 메인 AG-Grid에 탑재!
-      setIsPoModalOpen(false);
+      setIsOrdrModalOpen(false);
     } catch (error) {
       console.error("발주 상세 품목 조회 실패:", error);
       alert("발주서의 상세 내역을 불러오지 못했습니다.");
@@ -164,7 +164,7 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
   const handleFetchItemList = async () => {
     setIsLoading(true);
     try {
-      // 💡 백엔드(FastAPI)로 셀렉트박스 값(itemGubn)과 검색어(searchText)를 파라미터로 전송
+      // 백엔드(FastAPI)로 셀렉트박스 값(itemGubn)과 검색어(searchText)를 파라미터로 전송
       const response = await axios.get('http://127.0.0.1:8000/api/ipgo/items', {
         params: {
           itemGubn: selectedGubn,   // '21', '22' 등의 코드
@@ -389,18 +389,15 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
           <div className="form-group">
             <label>발주번호</label>
             <div className="input-with-btn">
-              <input type="text" placeholder="검색 버튼을 눌러주세요" value={selectedPoNo} readOnly />
-              <button type="button" className="btn-search" onClick={() => setIsPoModalOpen(true)}>
+              <input type="text" placeholder="검색 버튼을 눌러주세요" value={selectedOrdrNo} readOnly />
+              <button type="button" className="btn-search" onClick={() => setIsOrdrModalOpen(true)}>
                 🔍
               </button>
             </div>
           </div>
           <div className="form-group">
             <label>입고 예정일시</label>
-            <input 
-              type="datetime-local" 
-              defaultValue={new Date().toISOString().slice(0, 16)} 
-            />
+            <input type="datetime-local" defaultValue={new Date().toISOString().slice(0, 16)} />
           </div>
           <div className="form-group"><label>운전자</label><input type="text" placeholder="예: 홍길동" required /></div>
           <div className="form-group"><label>운전자 연락처</label><input type="text" placeholder="예: 010-1234-5678" required /></div>
@@ -447,40 +444,40 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
         </div>
 
         {/* ================================================================= 발주서 모달 ================================================================= */}
-        {isPoModalOpen && (
-          <div className="modal-overlay" onClick={() => setIsPoModalOpen(false)}>
+        {isOrdrModalOpen && (
+          <div className="modal-overlay" onClick={() => setIsOrdrModalOpen(false)}>
             <div className="modal-body" onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
-                <h3>발주서(PO) 검색</h3>
-                <button type="button" className="btn-close" onClick={() => setIsPoModalOpen(false)}>✕</button>
+                <h3>발주서(Ordr) 검색</h3>
+                <button type="button" className="btn-close" onClick={() => setIsOrdrModalOpen(false)}>✕</button>
               </div>
               <div className="modal-filters-split">
                 <div className="filter-side-date">
-                  <input type="date" value={poStartDate} onChange={(e) => setPoStartDate(e.target.value)} />
+                  <input type="date" value={ordrStartDate} onChange={(e) => setOrdrStartDate(e.target.value)} />
                   <span className="date-dash">~</span>
-                  <input type="date" value={poEndDate} onChange={(e) => setPoEndDate(e.target.value)} />
+                  <input type="date" value={ordrEndDate} onChange={(e) => setOrdrEndDate(e.target.value)} />
                 </div>
                 <div className="filter-side-search">
-                  <input type="text" placeholder="발주번호 검색" className="modal-search-input" value={poSearchText} onChange={(e) => setPoSearchText(e.target.value)} />
-                  <button type="button" className="btn-modal-query" onClick={handleFetchPoList}>조회</button>
+                  <input type="text" placeholder="발주번호 검색" className="modal-search-input" value={ordrSearchText} onChange={(e) => setOrdrSearchText(e.target.value)} />
+                  <button type="button" className="btn-modal-query" onClick={handleFetchOrdrList}>조회</button>
                 </div>
               </div>
               <div className="modal-content-area">
                 <table className="modal-table">
                   <thead>
                     <tr>
-                      <th className="col-po-no">발주번호</th>
+                      <th className="col-Ordr-no">발주번호</th>
                       <th className="col-summary">품목요약</th>
                       <th className="col-date">발주 일자</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredPoData.length > 0 ? (
-                      filteredPoData.map((po, idx) => (
-                        <tr key={idx} className="modal-tr-row" onClick={() => handleSelectPo(po.poNo)}>
-                          <td className="font-bold-blue col-po-no">{po.poNo}</td>
-                          <td className="col-summary">{po.itemSummary}</td>
-                          <td className="text-gray col-date">{po.poDate}</td>
+                    {filteredOrdrData.length > 0 ? (
+                      filteredOrdrData.map((ordr, idx) => (
+                        <tr key={idx} className="modal-tr-row" onClick={() => handleSelectOrdr(ordr.ordrNumb)}>
+                          <td className="font-bold-blue col-Ordr-no">{ordr.ordrNumb}</td>
+                          <td className="col-summary">{ordr.itemSummary}</td>
+                          <td className="text-gray col-date">{ordr.ordrDate}</td>
                         </tr>
                       ))
                     ) : (
@@ -602,7 +599,7 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
                 <button 
                   type="button" 
                   onClick={toggleScanner} /* 카메라 닫기 기능 연동 */
-                  style={{ border: 'none', background: 'none', fontSize: '20px', cursor: 'pointer', color: '#999' }}
+                  style={{ border: 'none', background: 'none', fontSize: '20px', cursor: 'Ordrinter', color: '#999' }}
                 >
                   &times;
                 </button>
