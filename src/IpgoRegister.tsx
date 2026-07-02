@@ -45,12 +45,25 @@ let html5QrScanner: any = null;
 interface DbItem {
   itemGrup: string;  // 원자재/부자재
   itemGubn: string;  // 품목구분
+  itemGubnName: string;  // 품목구분
   itemCode: string;   // 품목코드 (필수)
   atskCode: string;  // 품번
   itemName: string;   // 품명 (필수)
 }
 
+interface gubnCode {
+  code: string;
+  name: string;
+}
 
+interface PoMaster {
+  poNo: string;
+  compName: string;
+  itemSummary: string;
+  poDate: string;
+}
+
+/* ========================================================================================================================================= */
 export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
   const gridRef = useRef<AgGridReact>(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false); // 카메라 화면 토글 상태
@@ -62,8 +75,11 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
   const [isLoading, setIsLoading] = useState(false);     // 로딩 상태 관리
 
   const [isPoModalOpen, setIsPoModalOpen] = useState(false);
-  
+  const [poData, setPoData] = useState<PoMaster[]>([]);
+  const [isPoLoading, setIsPoLoading] = useState(false); // 조회 상태 분리
   const [selectedPoNo, setSelectedPoNo] = useState('');
+
+  const [itemSearchText, setItemSearchText] = useState(''); // 품목 검색어 상태
 
   const getPastDate = (daysAgo: number) => {
     const d = new Date();
@@ -74,6 +90,56 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
   const [poEndDate, setPoEndDate] = useState(getPastDate(0));
   const [poSearchText, setPoSearchText] = useState('');
 
+
+  /* ========================= 발주서 모달 관련 상태 및 함수 start ========================== */
+  // 발주서 모달 오픈 또는 발주서 조회버튼
+  const handleFetchPoList = async () => {
+    setIsPoLoading(true);
+    try {
+      // 기간 및 검색어를 쿼리 파라미터로 포함하여 백엔드 호출
+      const response = await axios.get('http://127.0.0.1:8000/api/ipgo/po', {
+        params: {
+          startDate: poStartDate,
+          endDate: poEndDate,
+          searchText: poSearchText
+        }
+      });
+      setPoData(response.data); // 서버에서 가져온 발주 마스터 리스트
+    } catch (error) {
+      console.error("발주서 목록 조회 실패:", error);
+      alert("발주서 목록을 가져오지 못했습니다.");
+    } finally {
+      setIsPoLoading(false);
+    }
+  };
+
+  const filteredPoData = useMemo(() => {
+    return poData;
+  }, [poData]);
+
+  // 발주 선택 시 상세 품목(Item) 리스트를 조회 후 메인 그리드에 바인딩
+  const handleSelectPo = async (poNo: string) => {
+    try {
+      // 선택한 발주번호에 종속된 발주 품목 상세 API 호출
+      const response = await axios.get(`http://127.0.0.1:8000/api/ipgo/po/${poNo}/items`);
+      
+      setSelectedPoNo(poNo);
+      setRowData(response.data); // 받아온 품목 리스트를 가입고 등록 메인 AG-Grid에 탑재!
+      setIsPoModalOpen(false);
+    } catch (error) {
+      console.error("발주 상세 품목 조회 실패:", error);
+      alert("발주서의 상세 내역을 불러오지 못했습니다.");
+    }
+  };
+  /* ========================= 발주서 모달 관련 상태 및 함수 end ========================== */
+
+
+
+  /* ========================= 품목 추가 모달 관련 상태 및 함수 start ========================== */
+  // 2. 공통코드 목록을 담을 상태 추가
+  const [itemGubnCodes, setItemGubnCodes] = useState<gubnCode[]>([]);
+  // 3. select 박스에서 사용자가 선택한 값을 저장할 상태 추가
+  const [selectedGubn, setSelectedGubn] = useState('');
 
   // =================================== 모달창 열릴 때 전체 품목 조회 함수
   const handleOpenProductModal = async () => {
@@ -94,15 +160,49 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
     }
   };
 
+  // 품목 조건 조회 함수
+  const handleFetchItemList = async () => {
+    setIsLoading(true);
+    try {
+      // 💡 백엔드(FastAPI)로 셀렉트박스 값(itemGubn)과 검색어(searchText)를 파라미터로 전송
+      const response = await axios.get('http://127.0.0.1:8000/api/ipgo/items', {
+        params: {
+          itemGubn: selectedGubn,   // '21', '22' 등의 코드
+          searchText: itemSearchText // 입력한 검색어
+        }
+      });
+      setDbItemList(response.data); // 서버에서 필터링되어 온 결과로 리스트 갱신
+    } catch (error) {
+      console.error("품목 조회 실패:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const poData = [
-    { poNo: 'PO-20260629-001', compName: '(주)한국정밀', itemSummary: '브레이크 패드 외 2건', poDate: '2026-06-29' },
-    { poNo: 'PO-20260625-004', compName: '(주)한국정밀', itemSummary: '조립용 플랜지 볼트 1건', poDate: '2026-06-25' },
-    { poNo: 'PO-20260620-002', compName: '삼우정밀', itemSummary: '가이드 레일 (우) 외 5건', poDate: '2026-06-20' },
-    { poNo: 'PO-20260515-001', compName: '대성기공', itemSummary: '에어 실린더 2건', poDate: '2026-05-15' },
-  ];
+  //서버에서 받아온 전체 데이터(dbItemList)를 셀렉트 박스 선택값(selectedGubn)에 따라 필터링
+  const filteredDbItemList = useMemo(() => {
+    // 셀렉트 박스가 '전체'("")이거나 데이터가 없으면 전체 목록 반환
+    if (!selectedGubn) return dbItemList;
+    
+    // sys_code_info에서 가져온 cd.name('원자재' 등)과 DbItem의 itemGubn 필드 값을 비교하여 매칭
+    // 만약 백엔드에서 code('20') 형태로 비교하고 싶다면 item.itemGubn === selectedGubn 등으로 수정 가능
+    return dbItemList.filter(item => item.itemGubn === selectedGubn);
+  }, [dbItemList, selectedGubn]);
 
-  
+
+  // 아이템 구분 select박스 조회
+  useEffect(() => {
+    const fetchCommonCodes = async () => {
+      try {
+        const response = await axios.get('http://127.0.0.1:8000/api/ipgo/item/gubn');
+        setItemGubnCodes(response.data); 
+      } catch (error) {
+        console.error("공통코드 조회 실패:", error);
+      }
+    };
+    fetchCommonCodes();
+  }, []);
+  /* ========================== 품목 추가 모달 관련 상태 및 함수 end ========================== */
 
   const [columnDefs] = useState<ColDef[]>([
     { field: 'itemCode', headerName: '품번', width: 120, sortable: true, filter: true },
@@ -173,24 +273,6 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
     e.preventDefault();
     alert('가입고 등록이 완료되었습니다.\n내역 화면으로 이동합니다.'); 
     setActivePage('history');
-  };
-
-  const filteredPoData = useMemo(() => {
-    return poData.filter(po => {
-      const isWithinDate = po.poDate >= poStartDate && po.poDate <= poEndDate;
-      const matchesSearch = po.poNo.toLowerCase().includes(poSearchText.toLowerCase());
-      return isWithinDate && matchesSearch;
-    });
-  }, [poStartDate, poEndDate, poSearchText]);
-
-  const handleSelectPo = (poNo: string) => {
-    const dummyPoItems: BomItem[] = [
-      // { checkbox: false, itemCode: 'BRK-FRONT-01', itemName: '브레이크 패드 (앞)', orderQty: 2000, prevIpgoQty: 500, actualIpgoQty: 500, needIpgoQty: 1500, currentQty: 1500, unit: 'EA' },
-      // { checkbox: false, itemCode: 'BOLT-M08-L20', itemName: '조립용 플랜지 볼트', orderQty: 5000, prevIpgoQty: 2000, actualIpgoQty: 1500, needIpgoQty: 3500, currentQty: 3500, unit: 'EA' }
-    ];
-    setSelectedPoNo(poNo);
-    setRowData(dummyPoItems);
-    setIsPoModalOpen(false);
   };
 
 
@@ -282,12 +364,13 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
     };
   }, []);
 
+
+
   /* ========================== QR/바코드 스캐너 관련 상태 및 함수 end ========================== */
 
 
 
-
-
+/*=========================================================== JSX 영역 ===========================================================*/
   return (
     <div className="page-panel">
       <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '2px solid #333', paddingBottom: '8px' }}>
@@ -337,7 +420,7 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
             <button type="button" className="btn-item-delete" onClick={handleRemoveItemFromGrid}>
               선택 삭제
             </button>
-            <button type="button" className="btn-add-product" onClick={handleOpenProductModal} >
+            <button type="button" className="btn-item-add" onClick={handleOpenProductModal} >
               품목 추가
             </button>
           </div>
@@ -363,7 +446,7 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
           <button type="submit" className="btn-submit">가입고 정보 등록</button>
         </div>
 
-        {/* 발주서 모달 */}
+        {/* ================================================================= 발주서 모달 ================================================================= */}
         {isPoModalOpen && (
           <div className="modal-overlay" onClick={() => setIsPoModalOpen(false)}>
             <div className="modal-body" onClick={(e) => e.stopPropagation()}>
@@ -378,8 +461,8 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
                   <input type="date" value={poEndDate} onChange={(e) => setPoEndDate(e.target.value)} />
                 </div>
                 <div className="filter-side-search">
-                  <input type="text" placeholder="발주번호 검색..." className="modal-search-input" value={poSearchText} onChange={(e) => setPoSearchText(e.target.value)} />
-                  <button type="button" className="btn-modal-query">조회</button>
+                  <input type="text" placeholder="발주번호 검색" className="modal-search-input" value={poSearchText} onChange={(e) => setPoSearchText(e.target.value)} />
+                  <button type="button" className="btn-modal-query" onClick={handleFetchPoList}>조회</button>
                 </div>
               </div>
               <div className="modal-content-area">
@@ -410,7 +493,7 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
           </div>
         )}
 
-        {/* 품목추가 버튼 모달 */}
+        {/* ================================================================= 품목추가 버튼 모달 ================================================================= */}
         {isItemModalOpen && (
           <div className="modal-overlay" onClick={() => setIsItemModalOpen(false)}>
             <div className="modal-body" onClick={(e) => e.stopPropagation()}>
@@ -418,10 +501,30 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
                 <h3>추가 품목 검색</h3>
                 <button type="button" className="btn-close" onClick={() => setIsItemModalOpen(false)}>✕</button>
               </div>
-              <div className="modal-filters" style={{ display: 'flex', gap: '8px', width: '100%' }}>
-                
-                <input type="text" placeholder="품번 또는 품명 검색..." className="modal-search-input" />
-                <button type="button" className="btn-modal-query">조회</button>
+              <div className="modal-filters" style={{ display: 'flex', gap: '8px', width: '95%' }}>
+                <select className="modal-select" style={{ width: '120px' }} value={selectedGubn} onChange={(e) => setSelectedGubn(e.target.value)}>
+                  <option value="">전체</option>
+                  {itemGubnCodes.map((cd) => (
+                  <option key={cd.code} value={cd.code}>
+                    {cd.name}
+                  </option>
+                ))}
+                </select>
+                <input type="text" 
+                       placeholder="품번 또는 품명 검색" 
+                       className="modal-search-input" 
+                       value={itemSearchText}
+                       onChange={(e) => setItemSearchText(e.target.value)}
+                       onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleFetchItemList();
+                        }
+                       }}
+                />
+                <button type="button" className="btn-modal-query" onClick={handleFetchItemList}>
+                  조회
+                </button>
               </div>
               <div className="modal-content-area">
                 
@@ -434,15 +537,15 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
                     <thead>
                       <tr>
                         <th style={{ width: '70px' }}>품목유형</th>
-                        <th style={{ width: '70px' }}>구분</th>
-                        <th style={{ width: '130px' }}>코드</th>
-                        <th style={{ width: '130px' }}>품번</th>
+                        <th style={{ width: '110px' }}>구분</th>
+                        <th style={{ width: '110px' }}>코드</th>
+                        <th style={{ width: '110px' }}>품번</th>
                         <th>품명</th>
                       </tr>
                     </thead>
                     <tbody>
                       {/* 서버에서 받아온 [dbItemList]로 매핑 */}
-                      {dbItemList.map((item, idx) => (
+                      {filteredDbItemList.map((item, idx) => (
                         <tr 
                           key={idx} 
                           className="modal-tr-row" 
@@ -452,7 +555,7 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
                           }}
                         >
                           {/* 파이썬 API 서버가 보내주는 데이터 필드명에 맞춰 바인딩 */}
-                          <td>{item.itemGubn || '원자재'}</td> {/* 만약 DB에 gubn이 없으면 임시 텍스트 */}
+                          <td>{item.itemGubnName || '원자재'}</td>
                           <td>{item.itemGrup || ''}</td>
                           <td className="font-bold-blue">{item.itemCode}</td>
                           <td className="font-bold-blue">{item.atskCode || '-'}</td>

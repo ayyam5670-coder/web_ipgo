@@ -260,6 +260,8 @@ body {
   cursor: pointer;
 }
 
+
+
 /* ===================== 모달 내부 테이블 리스트 start ===================== */
 .modal-content-area {
   padding: 12px;
@@ -461,7 +463,7 @@ body {
 
 #mobileOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 99; }
 
-/* ================== 주문번호 검색 모달 ================== 상단 필터 50:50 좌우 분할 컨테이너 */
+/* ================== 발주서 검색 모달 ================== 상단 필터 50:50 좌우 분할 컨테이너 */
 .modal-filters-split {
   display: flex;
   gap: 10px;
@@ -475,7 +477,7 @@ body {
 
 /* 좌측 달력 파트 (50%) */
 .filter-side-date {
-  flex: 1;
+  flex: 0.7;
   min-width: 0;   /* 자식 요소 때문에 박스가 커지는 것 방지 */
   display: flex;
   align-items: center;
@@ -489,8 +491,9 @@ body {
   border: 1px solid #ced4da;
   border-radius: 4px;
   padding: 0 4px;
-  font-size: 12px;
+  font-size: 13px;
   color: #495057;
+   text-align: center;
 }
 
 .date-dash {
