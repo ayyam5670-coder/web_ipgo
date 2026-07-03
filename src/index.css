@@ -289,9 +289,9 @@ body {
   text-align: left;
 }
 
-/* PC 기준 각 열 너비 맞춤 규칙 */
-.col-po-no { width: 170px; }
-.col-date  { width: 120px; }
+/* 발주서 모달 열 너비 맞춤 규칙 */
+.col-ordr-no { width: 130px; }
+.col-date  { width: 130px; }
 .col-summary { width: auto; }
 
 .modal-tr-row { cursor: pointer; transition: background 0.2s; }

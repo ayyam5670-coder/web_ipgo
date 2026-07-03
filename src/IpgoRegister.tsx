@@ -27,16 +27,17 @@ interface IpgoRegisterProps {
 
 interface BomItem {
   checkbox: boolean;
-  itemGubn: string;
+  itemGubnName: string;
   itemGrup: string;
   itemCode: string;
   atskCode: string;
   itemName: string;
-  orderQty: number;
-  prevIpgoQty: number;
-  actualIpgoQty: number;
-  needIpgoQty: number; 
-  currentQty: number;
+  ordrQnty: number;
+  prevQnty: number;
+  apgoQnty: number;
+  needQnty: number; 
+  ipgoQnty: number;
+  unit: string;
 }
 
 // 전역 변수로 html5QrScanner를 선언하여 스캐너 인스턴스를 관리
@@ -49,6 +50,7 @@ interface DbItem {
   itemCode: string;   // 품목코드 (필수)
   atskCode: string;  // 품번
   itemName: string;   // 품명 (필수)
+  unit: string;       // 단위
 }
 
 interface gubnCode {
@@ -89,6 +91,39 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
   const [ordrStartDate, setOrdrStartDate] = useState(getPastDate(7));
   const [ordrEndDate, setOrdrEndDate] = useState(getPastDate(0));
   const [ordrSearchText, setOrdrSearchText] = useState('');
+/* =============================================================== useEffect start =============================================================== */
+// 발주서 모달날짜(시작일, 종료일)가 변경되면 자동으로 조회를 수행하는 훅
+useEffect(() => {
+  // 처음 컴포넌트가 켜졌을 때나 모달이 닫혀있을 때는 실행 방지
+  if (isOrdrModalOpen) {
+    handleFetchOrdrList();
+  }
+}, [isOrdrModalOpen, ordrStartDate, ordrEndDate]);
+
+// 클린업 - 페이지 이탈 시 스캐너 해제 및 메모리 반환
+useEffect(() => {
+  return () => {
+    if (html5QrScanner) {
+      html5QrScanner.clear()
+        .then(() => { html5QrScanner = null; })
+        .catch((err: any) => console.error("페이지 이탈 시 스캐너 해제 실패:", err));
+    }
+  };
+}, []);
+
+// 아이템 구분 select박스 조회
+useEffect(() => {
+  const fetchCommonCodes = async () => {
+    try {
+      const response = await axios.get('http://127.0.0.1:8000/api/ipgo/item/gubn');
+      setItemGubnCodes(response.data); 
+    } catch (error) {
+      console.error("공통코드 조회 실패:", error);
+    }
+  };
+  fetchCommonCodes();
+}, []);
+/* =============================================================== useEffect end =============================================================== */
 
 
   /* ========================= 발주서 모달 관련 상태 및 함수 start ========================== */
@@ -113,18 +148,15 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
     }
   };
 
-  const filteredOrdrData = useMemo(() => {
-    return ordrData;
-  }, [ordrData]);
 
   // 발주 선택 시 상세 품목(Item) 리스트를 조회 후 메인 그리드에 바인딩
   const handleSelectOrdr = async (ordrNumb: string) => {
     try {
       // 선택한 발주번호에 종속된 발주 품목 상세 API 호출
-      const response = await axios.get(`http://127.0.0.1:8000/api/ipgo/Ordr/${ordrNumb}/items`);
+      const response = await axios.get(`http://127.0.0.1:8000/api/ipgo/ordr/${ordrNumb}/items`);
       
-      setSelectedOrdrNo(ordrNumb);
-      setRowData(response.data); // 받아온 품목 리스트를 가입고 등록 메인 AG-Grid에 탑재!
+      setSelectedOrdrNo(ordrNumb); // 인풋박스에 발주번호
+      setRowData(response.data); // 받아온 품목 리스트를 그리드에
       setIsOrdrModalOpen(false);
     } catch (error) {
       console.error("발주 상세 품목 조회 실패:", error);
@@ -190,27 +222,21 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
   }, [dbItemList, selectedGubn]);
 
 
-  // 아이템 구분 select박스 조회
-  useEffect(() => {
-    const fetchCommonCodes = async () => {
-      try {
-        const response = await axios.get('http://127.0.0.1:8000/api/ipgo/item/gubn');
-        setItemGubnCodes(response.data); 
-      } catch (error) {
-        console.error("공통코드 조회 실패:", error);
-      }
-    };
-    fetchCommonCodes();
-  }, []);
+
   /* ========================== 품목 추가 모달 관련 상태 및 함수 end ========================== */
 
+
+  /* ==================================== 그리드 컬럼 정의 및 기본 옵션 START ==================================== */
   const [columnDefs] = useState<ColDef[]>([
-    { field: 'itemCode', headerName: '품번', width: 120, sortable: true, filter: true },
+    { field: 'itemGrup', headerName: '구분', width: 80, sortable: true, filter: true, cellStyle: { textAlign: 'center' } },
+    { field: 'itemCode', headerName: '코드', width: 110, sortable: true, filter: true },
+    { field: 'atskCode', headerName: '품번', width: 110, sortable: true, filter: true },
     { field: 'itemName', headerName: '품명', flex: 2, minWidth: 120, sortable: true, filter: true },
-    { field: 'orderQty', headerName: '발주수량', width: 90, cellStyle: { textAlign: 'right' } },
-    { field: 'needIpgoQty', headerName: '필요 입고수량', width: 120, cellStyle: { textAlign: 'right', color: '#ff6b6b', fontWeight: 'bold' } },
+    { field: 'ordrQnty', headerName: '발주수량', width: 90, cellStyle: { textAlign: 'right' } },
+    { field: 'apgoQnty', headerName: '총입고수량', width: 100, cellStyle: { textAlign: 'right' } },
+    { field: 'needQnty', headerName: '필요 입고수량', width: 110, cellStyle: { textAlign: 'right', color: '#ff6b6b', fontWeight: 'bold' } },
     { 
-      field: 'currentQty', 
+      field: 'ipgoQnty', 
       headerName: '금회 납품수량', 
       flex: 1, 
       minWidth: 120, 
@@ -218,10 +244,11 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
       cellEditor: 'agTextCellEditor', 
       cellStyle: { textAlign: 'right', backgroundColor: '#e8f0f7', fontWeight: 'bold' } 
     },
-    { field: 'prevIpgoQty', headerName: '이전 가입고 수량', width: 130, cellStyle: { textAlign: 'right' } },
-    { field: 'actualIpgoQty', headerName: '실제 입고수량', width: 120, cellStyle: { textAlign: 'right' } },
-    { field: 'unit', headerName: '단위', width: 60 }
+    { field: 'prevIpgoQnty', headerName: '이전가입고수량', width: 110, cellStyle: { textAlign: 'right' } },
+    { field: 'unit', headerName: '단위', width: 60, cellStyle: { textAlign: 'left' } }
   ]);
+  /* ==================================== 그리드 컬럼 정의 및 기본 옵션 END ==================================== */
+
 
   const defaultColDef = useMemo<ColDef>(() => ({
     resizable: true,
@@ -237,16 +264,17 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
   const handleAddItemToGrid = (item: DbItem) => {
     const newRow: BomItem = {
       checkbox: false,
-      itemGubn: item.itemGubn || '원자재', // 만약 DB에 gubn이 없으면 임시 텍스트
+      itemGubnName: item.itemGubnName || '',
       itemGrup: item.itemGrup || '',
       itemCode: item.itemCode,
       atskCode: item.atskCode,
       itemName: item.itemName,
-      orderQty: 0,
-      prevIpgoQty: 0,
-      actualIpgoQty: 0,
-      needIpgoQty: 0,
-      currentQty: 1,
+      ordrQnty: 0,
+      apgoQnty: 0,
+      needQnty: 0,
+      ipgoQnty: 10,
+      prevQnty: 0,
+      unit: item.unit || ''
     };
     setRowData(prevRows => [...prevRows, newRow]);
     setIsItemModalOpen(false);
@@ -352,20 +380,6 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
       }
     }
   };
-
-  // 클린업 - 페이지 이탈 시 스캐너 해제 및 메모리 반환
-  useEffect(() => {
-    return () => {
-      if (html5QrScanner) {
-        html5QrScanner.clear()
-          .then(() => { html5QrScanner = null; })
-          .catch((err: any) => console.error("페이지 이탈 시 스캐너 해제 실패:", err));
-      }
-    };
-  }, []);
-
-
-
   /* ========================== QR/바코드 스캐너 관련 상태 및 함수 end ========================== */
 
 
@@ -409,6 +423,26 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
             품목 명세 <span className="pc-only-text">('금회 납품수량'은 클릭하여 수정 가능)</span>
           </span>
           
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <input 
+              type="text" 
+              value={selectedOrdrNo} 
+              readOnly 
+              placeholder="발주서 미선택"
+              style={{ 
+                padding: '4px 8px', 
+                fontSize: '13px', 
+                border: '1px solid #ccc', 
+                backgroundColor: '#f5f5f5', // 비활성화 느낌을 주는 배경색
+                color: '#333',
+                fontWeight: 'bold',
+                borderRadius: '4px',
+                width: '140px',
+                textAlign: 'center'
+              }} 
+            />
+          </div>
+
 
           <div style={{ display: 'flex', gap: '6px' }}>
             <button type="button" className="btn-camera-scan" onClick={toggleScanner} >
@@ -458,7 +492,18 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
                   <input type="date" value={ordrEndDate} onChange={(e) => setOrdrEndDate(e.target.value)} />
                 </div>
                 <div className="filter-side-search">
-                  <input type="text" placeholder="발주번호 검색" className="modal-search-input" value={ordrSearchText} onChange={(e) => setOrdrSearchText(e.target.value)} />
+                  <input type="text" 
+                         placeholder="발주번호 검색" 
+                         className="modal-search-input" 
+                         value={ordrSearchText} 
+                         onChange={(e) => setOrdrSearchText(e.target.value)} 
+                         onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleFetchOrdrList();
+                            }
+                          }}
+                  />
                   <button type="button" className="btn-modal-query" onClick={handleFetchOrdrList}>조회</button>
                 </div>
               </div>
@@ -466,16 +511,16 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
                 <table className="modal-table">
                   <thead>
                     <tr>
-                      <th className="col-Ordr-no">발주번호</th>
+                      <th className="col-ordr-no">발주번호</th>
                       <th className="col-summary">품목요약</th>
                       <th className="col-date">발주 일자</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredOrdrData.length > 0 ? (
-                      filteredOrdrData.map((ordr, idx) => (
+                    {ordrData.length > 0 ? (
+                      ordrData.map((ordr, idx) => (
                         <tr key={idx} className="modal-tr-row" onClick={() => handleSelectOrdr(ordr.ordrNumb)}>
-                          <td className="font-bold-blue col-Ordr-no">{ordr.ordrNumb}</td>
+                          <td className="font-bold-blue col-ordr-no">{ordr.ordrNumb}</td>
                           <td className="col-summary">{ordr.itemSummary}</td>
                           <td className="text-gray col-date">{ordr.ordrDate}</td>
                         </tr>
