@@ -47,10 +47,16 @@ interface DbItem {
   itemGrup: string;  // 원자재/부자재
   itemGubn: string;  // 품목구분
   itemGubnName: string;  // 품목구분
-  itemCode: string;   // 품목코드 (필수)
+  itemCode: string;   // 품목코드
   atskCode: string;  // 품번
-  itemName: string;   // 품명 (필수)
+  itemName: string;   // 품명
   unit: string;       // 단위
+  ordrNumb: string;
+  ordrDate: string;
+  itemQnty: number;  // 입고 수량
+  ordrQnty: number;  // 발주 수량
+  apgoQnty: number;  // 총 입고 수량
+  miQnty: number;  // 미입고 수량
 }
 
 interface gubnCode {
@@ -152,15 +158,51 @@ useEffect(() => {
   // 발주 선택 시 상세 품목(Item) 리스트를 조회 후 메인 그리드에 바인딩
   const handleSelectOrdr = async (ordrNumb: string) => {
     try {
-      // 선택한 발주번호에 종속된 발주 품목 상세 API 호출
+      // 1. 백엔드에서 발주 상세 품목들 받아오기
       const response = await axios.get(`http://127.0.0.1:8000/api/ipgo/ordr/${ordrNumb}/items`);
+      const rawItems = response.data; // 백엔드가 준 상태 그대로의 배열
+
+      // 화면 상단 인풋박스에 발주번호
+      setSelectedOrdrNo(ordrNumb);
+
+      // 수량 계산식을 거쳐서 그리드용 데이터(BomItem 구조)로 재조립하기
+      const calculatedRows = rawItems.map((item: any) => {
+        
+        // 변수 선언 (백엔드에서 넘어온 값들)
+        const ordrQnty = item.ordrQnty || 0; // 발주수량
+        const apgoQnty = item.apgoQnty || 0;   // 실제 총입고수량
+        
+        // 필요 입고수량 = 발주수량 - 실제 총입고수량
+        const needQnty = ordrQnty - apgoQnty; 
+
+        // AG-Grid 한 줄 양식에 맞춰서 리턴
+        return {
+          checkbox: false,
+          itemGrup: item.itemGrup,     // 구분 (원자재 등)
+          itemCode: item.itemCode,     // 품목코드
+          atskCode: item.atskCode,     // 품번
+          itemName: item.itemName,     // 품명
+          ordrQnty: ordrQnty,        // 발주수량
+          apgoQnty: apgoQnty,          // 실제 총입고수량
+          
+          // 계산식 결과 반영
+          needQnty: needQnty,  // 필요 입고수량 (계산된 값)
+          
+          ipgoQnty: 10,                 // 금회 납품수량 (기본값 1로 세팅하고 사용자가 수정하게 둠)
+          prevQnty: item.prevQnty || 0, // 이전 가입고 수량
+          unit: item.unit || 'EA'
+        };
+      });
+
+      // 4. 최종 계산된 리스트를 그리드 상태에 탑재!
+      setRowData(calculatedRows);
       
-      setSelectedOrdrNo(ordrNumb); // 인풋박스에 발주번호
-      setRowData(response.data); // 받아온 품목 리스트를 그리드에
+      // 5. 모달창 닫기
       setIsOrdrModalOpen(false);
+
     } catch (error) {
-      console.error("발주 상세 품목 조회 실패:", error);
-      alert("발주서의 상세 내역을 불러오지 못했습니다.");
+      console.error("발주 상세 내역 바인딩 실패:", error);
+      alert("상세 내역을 계산하는 중 오류가 발생했습니다.");
     }
   };
   /* ========================= 발주서 모달 관련 상태 및 함수 end ========================== */
