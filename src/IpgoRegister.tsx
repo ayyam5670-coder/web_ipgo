@@ -57,6 +57,8 @@ interface DbItem {
   ordrQnty: number;  // 발주 수량
   apgoQnty: number;  // 총 입고 수량
   miQnty: number;  // 미입고 수량
+  deryDate: String;  // 납기일
+  statType: string; // 발주종결여부
 }
 
 interface gubnCode {
@@ -98,7 +100,7 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
   const [ordrEndDate, setOrdrEndDate] = useState(getPastDate(0));
   const [ordrSearchText, setOrdrSearchText] = useState('');
 /* =============================================================== useEffect start =============================================================== */
-// 발주서 모달날짜(시작일, 종료일)가 변경되면 자동으로 조회를 수행하는 훅
+// 발주서 모달날짜(시작일, 종료일)가 변경되면 자동으로 조회
 useEffect(() => {
   // 처음 컴포넌트가 켜졌을 때나 모달이 닫혀있을 때는 실행 방지
   if (isOrdrModalOpen) {
@@ -158,7 +160,7 @@ useEffect(() => {
   // 발주 선택 시 상세 품목(Item) 리스트를 조회 후 메인 그리드에 바인딩
   const handleSelectOrdr = async (ordrNumb: string) => {
     try {
-      // 1. 백엔드에서 발주 상세 품목들 받아오기
+      // 백엔드에서 발주 상세 품목들 받아오기
       const response = await axios.get(`http://127.0.0.1:8000/api/ipgo/ordr/${ordrNumb}/items`);
       const rawItems = response.data; // 백엔드가 준 상태 그대로의 배열
 
@@ -188,16 +190,17 @@ useEffect(() => {
           // 계산식 결과 반영
           needQnty: needQnty,  // 필요 입고수량 (계산된 값)
           
-          ipgoQnty: 10,                 // 금회 납품수량 (기본값 1로 세팅하고 사용자가 수정하게 둠)
+          ipgoQnty: 10,                 // 금회 납품수량 (기본값 10, 사용자가 입력함)
           prevQnty: item.prevQnty || 0, // 이전 가입고 수량
           unit: item.unit || 'EA'
+          //,statType: item.statType
         };
       });
 
-      // 4. 최종 계산된 리스트를 그리드 상태에 탑재!
+      // 최종 계산된 리스트
       setRowData(calculatedRows);
       
-      // 5. 모달창 닫기
+      // 모달창 닫기
       setIsOrdrModalOpen(false);
 
     } catch (error) {
@@ -210,9 +213,9 @@ useEffect(() => {
 
 
   /* ========================= 품목 추가 모달 관련 상태 및 함수 start ========================== */
-  // 2. 공통코드 목록을 담을 상태 추가
+  // 공통코드 목록을 담을 상태 추가
   const [itemGubnCodes, setItemGubnCodes] = useState<gubnCode[]>([]);
-  // 3. select 박스에서 사용자가 선택한 값을 저장할 상태 추가
+  // select 박스에서 사용자가 선택한 값을 저장할 상태 추가
   const [selectedGubn, setSelectedGubn] = useState('');
 
   // =================================== 모달창 열릴 때 전체 품목 조회 함수
@@ -253,19 +256,17 @@ useEffect(() => {
     }
   };
 
-  //서버에서 받아온 전체 데이터(dbItemList)를 셀렉트 박스 선택값(selectedGubn)에 따라 필터링
+  // 서버에서 받아온 전체 데이터(dbItemList)를 셀렉트 박스 선택값(selectedGubn)에 따라 필터링
   const filteredDbItemList = useMemo(() => {
     // 셀렉트 박스가 '전체'("")이거나 데이터가 없으면 전체 목록 반환
     if (!selectedGubn) return dbItemList;
     
     // sys_code_info에서 가져온 cd.name('원자재' 등)과 DbItem의 itemGubn 필드 값을 비교하여 매칭
-    // 만약 백엔드에서 code('20') 형태로 비교하고 싶다면 item.itemGubn === selectedGubn 등으로 수정 가능
     return dbItemList.filter(item => item.itemGubn === selectedGubn);
   }, [dbItemList, selectedGubn]);
 
-
-
   /* ========================== 품목 추가 모달 관련 상태 및 함수 end ========================== */
+
 
 
   /* ==================================== 그리드 컬럼 정의 및 기본 옵션 START ==================================== */
@@ -347,28 +348,18 @@ useEffect(() => {
 
 
   /* ========================== QR/바코드 스캐너 관련 상태 및 함수 start ========================== */
-  // 1. QR/바코드 인식 또는 Input 엔터 입력 시 실행될 함수
-  const handleScanSubmit = async(code: string) => {
-    if (!code.trim()) return;
-  
-    // console.log(`스캔/입력된 품목코드: ${code}`);
-
-    if (!code.trim()) return;
+  // 스캔 제출 핸들러 (QR/바코드로 발주서번호를 찍었을 때 실행)
+  const handleScanSubmit = async (code: string) => {
+    const cleanOrdrNumb = code.trim();
+    if (!cleanOrdrNumb) return;
 
     try {
-      // 파이썬 FastAPI 서버의 개별 품목 조회 주소 찌르기
-      const response = await axios.get(`http://127.0.0.1:8000/api/ipgo/items/${code}`);
-      const foundItem = response.data;
+      // 내부에서 API 호출 -> 수량 계산(needQnty 등) -> setSelectedOrdrNo -> setRowData -> 모달 닫기까지 한 번에 처리
+      await handleSelectOrdr(cleanOrdrNumb);
 
-      if (foundItem) {
-        handleAddItemToGrid(foundItem);
-      }
-    } catch (error: any) {
-      if (error.response && error.response.status === 404) {
-        alert("DB에 등록되지 않은 품목코드입니다.");
-      } else {
-        alert("서버 통신 오류가 발생했습니다.");
-      }
+    } catch (error) {
+      console.error("QR/바코드 스캔 처리 중 오류:", error);
+      alert("발주서 정보를 불러오는 데 실패했습니다.");
     }
   };
 
@@ -376,46 +367,47 @@ useEffect(() => {
   const toggleScanner = () => {
     if (!isScannerOpen) {
       setIsScannerOpen(true);
-      
+
       setTimeout(() => {
-        // 전역 변수에 스캐너 인스턴스를 할당
         html5QrScanner = new Html5QrcodeScanner(
-          "qr-reader", 
+          "qr-reader",
           { fps: 10, qrbox: { width: 250, height: 250 } },
           false
         );
-        
+
         html5QrScanner.render(
           (decodedText: string) => {
             handleScanSubmit(decodedText);
             if (html5QrScanner) {
-              html5QrScanner.clear().catch((err: any) => console.error("스캐너 해제 실패:", err));
+              html5QrScanner
+                .clear()
+                .catch((err: any) => console.error("스캐너 해제 실패:", err));
             }
             setIsScannerOpen(false);
           },
           (error: any) => {
-            // 매 프레임 발생하는 단순 "QR 없음" 안내 텍스트는 필터링, 진짜 에러만 찍기
-            if (error && typeof error === 'string' && error.includes("NotFoundException")) {
-              return; // QR을 찾는 중일 때 나오는 흔한 예외는 무시해서 콘솔 청정구역 유지
+            if (
+              error &&
+              typeof error === "string" &&
+              error.includes("NotFoundException")
+            ) {
+              return;
             }
-            
-            // 카메라 권한 거부, 하드웨어 충돌 등 치명적인 에러만 콘솔에 기록
             console.warn("스캐너 내부 경고/오류:", error);
           }
         );
       }, 100);
-
     } else {
-      /* [사용자가 직접 X 버튼이나 닫기를 눌렀을 때] 강제로 카메라 스트림을 죽여 메모리 반환 */
       if (html5QrScanner) {
-        html5QrScanner.clear()
+        html5QrScanner
+          .clear()
           .then(() => {
-            html5QrScanner = null; // 메모리 참조 해제
+            html5QrScanner = null;
             setIsScannerOpen(false);
           })
           .catch((err: any) => {
             console.error("카메라 강제 종료 중 에러:", err);
-            setIsScannerOpen(false); // 에러가 나더라도 우선 창은 닫음
+            setIsScannerOpen(false);
           });
       } else {
         setIsScannerOpen(false);
@@ -424,8 +416,25 @@ useEffect(() => {
   };
   /* ========================== QR/바코드 스캐너 관련 상태 및 함수 end ========================== */
 
+  /* ========================== 신규버튼 이벤트 ================================ */
+  const clearAll = () => {
+  // 발주번호 모달창 검색 인풋 초기화
+  setOrdrSearchText(''); 
+
+  // 메인 화면 그리드 위 발주번호 인풋 초기화
+  setSelectedOrdrNo(''); 
+
+  // AG-Grid 메인 데이터 빈 배열로 초기화
+  setRowData([]); 
+
+  // 모달창의 발주 목록 검색 결과도 함께 비워야하면 추가
+  // setOrdrData([]); 
+};
 
 
+
+/*=========================================================== JSX 영역 ===========================================================*/
+/*=========================================================== JSX 영역 ===========================================================*/
 /*=========================================================== JSX 영역 ===========================================================*/
   return (
     <div className="page-panel">
@@ -488,13 +497,16 @@ useEffect(() => {
 
           <div style={{ display: 'flex', gap: '6px' }}>
             <button type="button" className="btn-camera-scan" onClick={toggleScanner} >
-              {isScannerOpen ? '카메라 닫기' : 'QR/바코드 스캔'}
+              {isScannerOpen ? '카메라 닫기' : '스캔'}
             </button>
-            <button type="button" className="btn-item-delete" onClick={handleRemoveItemFromGrid}>
-              선택 삭제
+            <button type="button" className="btn-item-clear" onClick={clearAll} >
+              신규
             </button>
             <button type="button" className="btn-item-add" onClick={handleOpenProductModal} >
-              품목 추가
+              추가
+            </button>
+            <button type="button" className="btn-item-delete" onClick={handleRemoveItemFromGrid}>
+              삭제
             </button>
           </div>
         </div>

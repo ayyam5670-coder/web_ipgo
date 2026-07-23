@@ -362,9 +362,30 @@ body {
   gap: 4px;
   transition: background 0.2s;
 }
+.btn-camera-scan:hover {
+  background-color: #303030;
+}
+
+.btn-item-clear {
+  background-color: rgb(128, 128, 128);
+  color: #ffffff;
+  border: none;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: background 0.2s;
+}
+.btn-item-clear:hover {
+  background-color: #404140;
+}
 
 .btn-item-add {
-  background-color: #4dad61;
+  background-color: #40d147;
   color: #ffffff;
   border: none;
   padding: 5px 12px;
@@ -394,6 +415,9 @@ body {
   align-items: center;
   gap: 4px;
   transition: background 0.2s;
+}
+.btn-item-delete:hover {
+  background-color: #bb3e3e;
 }
 
 .btn-print-action {

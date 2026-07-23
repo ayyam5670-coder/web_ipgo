@@ -1,11 +1,9 @@
 import { useState, useMemo, useRef } from 'react';
 import { AgGridReact } from 'ag-grid-react';
+import { themeAlpine } from 'ag-grid-community';
 import type { ColDef, CellClickedEvent } from 'ag-grid-community';
-import { ModuleRegistry, AllCommunityModule, themeAlpine } from 'ag-grid-community';
-import { useReactToPrint } from 'react-to-print';
-import { IpgoPrintSheet } from '../src/report/IpgoPrint';
-
-ModuleRegistry.registerModules([AllCommunityModule]);
+import { useReactToPrint } from 'react-to-print'; // 인쇄 라이브러리 hook 가져오기
+import { IpgoPrintSheet } from '../src/report/IpgoPrint'; // 인쇄 템플릿 컴포넌트
 
 const myCompactTheme = themeAlpine.withParams({
   headerHeight: 32,
@@ -20,7 +18,8 @@ const loginUser = {
   compName: '(주)한국정밀'
 };
 
-// 가입고 내역 메인 그리드용 (statType: 'N' | 'Y' 적용)
+
+// 가입고 내역 메인 그리드용 (마스터 정보)
 interface IpgoHistoryMaster {
   ipgoNo: string;         
   poNo: string;
@@ -28,10 +27,10 @@ interface IpgoHistoryMaster {
   dueDate: string;
   ipgoDate: string;       
   itemCountText: string;
-  statType: 'N' | 'Y'; // 'N': 진행중, 'Y': 종결
+  status: '가입고진행중' | '입고대기중' | '입고완료';
 }
 
-// 상세 내역 구조 (품목별 statType: 'N' | 'Y' 적용)
+// 상세 내역 구조
 interface IpgoHistoryDetail {
   itemCode: string;
   itemName: string;
@@ -39,25 +38,25 @@ interface IpgoHistoryDetail {
   needIpgoQty: number;
   currentQty: number;
   unit: string;
-  statType: 'N' | 'Y';
 }
 
 export default function IpgoHistory() {
   const mainGridRef = useRef<AgGridReact>(null);
+
   const printComponentRef = useRef<HTMLDivElement>(null);
 
   // 1. 현재 체크된 품목 데이터를 담아둘 상태 변수
   const [printData, setPrintData] = useState<any[]>([]);
 
-  // 2. react-to-print 훅 (v3 최신 옵션 적용)
+  // 2. react-to-print 핵심 훅 트리거 정의
   const handlePrintTrigger = useReactToPrint({
-    contentRef: printComponentRef, // content 함수 대신 contentRef에 ref 객체 직접 전달
+    contentRef: printComponentRef, // 인쇄 대상 Ref를 바인딩합니다.
     documentTitle: '가입고_등록_내역서',
   });
 
-  // 3. 인쇄 버튼 클릭 핸들러
+  // 3. 인쇄 버튼을 눌렀을 때 작동하는 가공 핸들러 함수
   const handlePrintHistory = () => {
-    const selectedNodes = mainGridRef.current?.api?.getSelectedNodes();
+    const selectedNodes = mainGridRef.current?.api.getSelectedNodes();
     const selectedData = selectedNodes?.map((node: any) => node.data) || [];
 
     if (selectedData.length === 0) {
@@ -65,8 +64,10 @@ export default function IpgoHistory() {
       return;
     }
 
+    // A. 선택된 데이터를 상태에 바인딩
     setPrintData(selectedData);
 
+    // B. React가 상태값 변경 후 렌더링할 시간을 준 뒤, 브라우저 인쇄 팝업을 호출합니다.
     setTimeout(() => {
       handlePrintTrigger();
     }, 100);
@@ -77,34 +78,32 @@ export default function IpgoHistory() {
     d.setDate(d.getDate() - daysAgo);
     return d.toISOString().split('T')[0];
   };
-
   const [startDate, setStartDate] = useState(getPastDate(30));
   const [endDate, setEndDate] = useState(getPastDate(0));
   
   const [searchPoNo, setSearchPoNo] = useState('');
-  const [searchStatus, setSearchStatus] = useState('전체'); // '전체' | 'N' | 'Y'
+  const [searchStatus, setSearchStatus] = useState('전체');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedIpgoNo, setSelectedIpgoNo] = useState('');
   const [modalRowData, setModalRowData] = useState<IpgoHistoryDetail[]>([]);
 
-  // statType 기준 ('N', 'Y') 데이터 반영
   const masterData: IpgoHistoryMaster[] = [
-    { ipgoNo: 'IG-20260629-001', poNo: 'PO-20260629-001', regDate: '2026-06-29', dueDate: '2026-06-30', ipgoDate: '2026-06-30', itemCountText: '브레이크 패드 외 1건', statType: 'Y' },
-    { ipgoNo: 'IG-20260628-002', poNo: 'PO-20260628-004', regDate: '2026-06-28', dueDate: '2026-07-02', ipgoDate: '-', itemCountText: '조립용 플랜지 볼트 1건', statType: 'N' },
-    { ipgoNo: 'IG-20260625-001', poNo: 'PO-20260625-002', regDate: '2026-06-25', dueDate: '2026-06-27', ipgoDate: '2026-06-28', itemCountText: '가이드 레일 (우) 외 3건', statType: 'N' },
+    { ipgoNo: 'IG-20260629-001', poNo: 'PO-20260629-001', regDate: '2026-06-29', dueDate: '2026-06-30', ipgoDate: '2026-06-30', itemCountText: '브레이크 패드 외 1건', status: '입고완료' },
+    { ipgoNo: 'IG-20260628-002', poNo: 'PO-20260628-004', regDate: '2026-06-28', dueDate: '2026-07-02', ipgoDate: '-', itemCountText: '조립용 플랜지 볼트 1건', status: '입고대기중' },
+    { ipgoNo: 'IG-20260625-001', poNo: 'PO-20260625-002', regDate: '2026-06-25', dueDate: '2026-06-27', ipgoDate: '2026-06-28', itemCountText: '가이드 레일 (우) 외 3건', status: '가입고진행중' },
   ];
 
   const detailDataMap: Record<string, IpgoHistoryDetail[]> = {
     'IG-20260629-001': [
-      { itemCode: 'BRK-FRONT-01', itemName: '브레이크 패드 (앞)', orderQty: 2000, needIpgoQty: 1500, currentQty: 1500, unit: 'EA', statType: 'Y' },
-      { itemCode: 'BOLT-M08-L20', itemName: '조립용 플랜지 볼트', orderQty: 5000, needIpgoQty: 3500, currentQty: 3500, unit: 'EA', statType: 'Y' }
+      { itemCode: 'BRK-FRONT-01', itemName: '브레이크 패드 (앞)', orderQty: 2000, needIpgoQty: 1500, currentQty: 1500, unit: 'EA' },
+      { itemCode: 'BOLT-M08-L20', itemName: '조립용 플랜지 볼트', orderQty: 5000, needIpgoQty: 3500, currentQty: 3500, unit: 'EA' }
     ],
     'IG-20260628-002': [
-      { itemCode: 'BOLT-M08-L20', itemName: '조립용 플랜지 볼트', orderQty: 3000, needIpgoQty: 2000, currentQty: 2000, unit: 'EA', statType: 'N' }
+      { itemCode: 'BOLT-M08-L20', itemName: '조립용 플랜지 볼트', orderQty: 3000, needIpgoQty: 2000, currentQty: 2000, unit: 'EA' }
     ],
     'IG-20260625-001': [
-      { itemCode: 'ITEM-WASH-11', itemName: '평와셔 M12', orderQty: 1000, needIpgoQty: 1000, currentQty: 1000, unit: 'EA', statType: 'N' }
+      { itemCode: 'ITEM-WASH-11', itemName: '평와셔 M12', orderQty: 1000, needIpgoQty: 1000, currentQty: 1000, unit: 'EA' }
     ]
   };
 
@@ -112,13 +111,14 @@ export default function IpgoHistory() {
     return masterData.filter(item => {
       const isWithinDate = item.regDate >= startDate && item.regDate <= endDate;
       const matchesPoNo = item.poNo.toLowerCase().includes(searchPoNo.toLowerCase());
-      const matchesStatus = searchStatus === '전체' || item.statType === searchStatus;
+      const matchesStatus = searchStatus === '전체' || item.status === searchStatus;
       return isWithinDate && matchesPoNo && matchesStatus;
     });
   }, [startDate, endDate, searchPoNo, searchStatus]);
 
-  // 품목건수 클릭 핸들러
+  // 품목건수 원클릭 전용 핸들러 함수
   const onCellClicked = (event: CellClickedEvent<IpgoHistoryMaster>) => {
+    // 클릭한 필드가 'itemCountText' 일 때만 모달 팝업 수행
     if (event.colDef?.field === 'itemCountText' && event.data) {
       const ipgoNo = event.data.ipgoNo;
       setSelectedIpgoNo(ipgoNo);
@@ -147,13 +147,13 @@ export default function IpgoHistory() {
     { field: 'dueDate', headerName: '입고예정일', width: 110, cellStyle: { textAlign: 'center' } },
     { field: 'ipgoDate', headerName: '최근입고일', width: 110, cellStyle: { textAlign: 'center' } },
     { 
-      field: 'statType', 
+      field: 'status', 
       headerName: '진행상태', 
       width: 110,
-      valueGetter: (params) => params.data?.statType === 'N' ? '진행중' : '종결',
       cellStyle: (params) => {
-        if (params.value === '종결') return { color: '#888', fontWeight: 'bold' };
-        return { color: '#2e7d32', fontWeight: 'bold' };
+        if (params.value === '입고완료') return { color: '#2b8a3e', fontWeight: 'bold' };
+        if (params.value === '입고대기중') return { color: '#fcc419', fontWeight: 'bold' };
+        return { color: '#4c6ef5', fontWeight: 'bold' };
       }
     }
   ]);
@@ -165,17 +165,7 @@ export default function IpgoHistory() {
     { field: 'orderQty', headerName: '발주수량', width: 90, cellStyle: { textAlign: 'right' } },
     { field: 'needIpgoQty', headerName: '필요 입고수량', width: 110, cellStyle: { textAlign: 'right', color: '#ff6b6b' } },
     { field: 'currentQty', headerName: '금회 납품수량', width: 110, cellStyle: { textAlign: 'right', fontWeight: 'bold' } },
-    { field: 'unit', headerName: '단위', width: 60, cellStyle: { textAlign: 'center' } },
-    { 
-      field: 'statType', 
-      headerName: '상태', 
-      width: 85,
-      valueGetter: (params) => params.data?.statType === 'N' ? '진행중' : '종결',
-      cellStyle: (params) => {
-        if (params.value === '종결') return { color: '#2b8a3e', fontWeight: 'bold', textAlign: 'center' };
-        return { color: '#4c6ef5', fontWeight: 'bold', textAlign: 'center' };
-      }
-    }
+    { field: 'unit', headerName: '단위', width: 60 }
   ]);
 
   return (
@@ -189,7 +179,7 @@ export default function IpgoHistory() {
         </div>
       </div>
 
-      {/* 상단 필터바 (statType N / Y 옵션 적용) */}
+      {/* 상단 필터바 */}
       <div className="filter-bar" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', backgroundColor: '#f8f9fa', padding: '12px', borderRadius: '6px', marginBottom: '15px', border: '1px solid #e9ecef' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#495057' }}>입고일</label>
@@ -209,19 +199,27 @@ export default function IpgoHistory() {
           <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#495057' }}>진행상태</label>
           <select value={searchStatus} onChange={(e) => setSearchStatus(e.target.value)} style={{ height: '32px', border: '1px solid #ced4da', borderRadius: '4px', padding: '0 8px', fontSize: '13px', backgroundColor: '#fff' }}>
             <option value="전체">전체</option>
-            <option value="N">진행중</option>
-            <option value="Y">종결</option>
+            <option value="가입고진행중">가입고진행중</option>
+            <option value="입고대기중">입고대기중</option>
+            <option value="입고완료">입고완료</option>
           </select>
         </div>
       </div>
 
       {/* 중앙 마스터 내역 그리드 영역 */}
       <div style={{ height: 'calc(100vh - 230px)', width: '100%' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          marginBottom: '6px' 
+        }}>
+          {/* 안내 메시지 */}
           <div style={{ fontSize: '11px', color: '#868e96' }}>
             * '품목건수' 텍스트를 클릭하시면 상세 명세 모달이 열립니다.
           </div>
 
+          {/* 인쇄 버튼 */}
           <button
             type="button"
             className="btn-print-action"
@@ -234,21 +232,23 @@ export default function IpgoHistory() {
           ref={mainGridRef}
           rowData={filteredRowData}
           columnDefs={columnDefs}
+          // rowSelection={{ mode: 'singleRow' }}
           onCellClicked={onCellClicked}
           theme={myCompactTheme}
-          rowSelection={{ mode: 'multiRow', headerCheckbox: true }}
+          rowSelection={{ mode: 'multiRow', checkboxes: true, headerCheckbox: true }}
         />
       </div>
       
-      {/* 인쇄용 백그라운드 영역 */}
+      {/* 실제 화면에는 전혀 안 보이지만, 인쇄 출력용 백그라운드 템플릿 영역 */}
       <div style={{ display: 'none' }}>
         <IpgoPrintSheet ref={printComponentRef} selectedData={printData} />
       </div>
 
+
       {/* 상세 품목 목록 모달 팝업 */}
       {isModalOpen && (
         <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
-          <div className="modal-body" style={{ maxWidth: '850px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
+          <div className="modal-body" style={{ maxWidth: '800px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>가입고 상세 품목 명세 [{selectedIpgoNo}]</h3>
               <button type="button" className="btn-close" onClick={() => setIsModalOpen(false)}>✕</button>
