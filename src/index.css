@@ -596,6 +596,22 @@ body {
     min-width: 0;
   }
 
+  /* 모바일 상단 날짜 */
+  .date-filter-group {
+    flex-wrap: wrap !important; /* 줄바꿈 허용 */
+    align-items: flex-start !important;
+  }
+
+  .date-filter-group label {
+    width: 100% !important;
+    margin-bottom: 2px !important;
+  }
+
+  .date-filter-group input[type="date"] {
+    flex: 1 !important;
+    min-width: 0 !important;
+  }
+
   /*=========================== 모달 팝업창 관련 CSS ===========================*/
   .modal-overlay {
     padding: 8px;
@@ -619,6 +635,11 @@ body {
     display: none;
   }
 
+  /* 가입고 등록 화면 '품목 명세' 숨기기 */
+  .grid-title {
+    display: none;
+  }
+
   /* 선택 삭제 버튼 스타일 */
   .btn-item-delete {
     padding: 2px 10px 0px 10px;
@@ -636,6 +657,7 @@ body {
     max-width: 45px;
     word-break: keep-all;
   }
+
 
   /* 모바일 화면 전용 열 너비 재조정 (3열이 안 깨지고 한 화면에 나오도록 계산) */
   .col-po-no   { width: 130px; }
@@ -680,4 +702,19 @@ body {
     padding: 0 14px;
     font-size: 13px;
   }
+
+  /* 입고내역메뉴 스타일 */
+  .grid-notice-text {
+    display: none !important;
+  }
+
+  .btn-print-action .btn-text {
+    display: none !important;
+  }
+
+  .btn-print-action {
+    padding: 6px 10px;
+    margin-left: auto;
+  }
+
 }

@@ -25,6 +25,7 @@ interface OrderMaster {
   ordrDate: string;    // 발주일자
   deryDate: string;    // 납기일자
   itemSummary: string; // 품목요약
+  ordrQnty: number;
   statType: string;    // 진행상태 (Y: 종결, N: 진행중)
 }
 
@@ -132,9 +133,7 @@ export default function OrdrHistory() {
   // ----------------------------------------------------
   // 메인 발주 내역 그리드 컬럼
   const [columnDefs] = useState<ColDef<OrderMaster>[]>([
-    { field: 'ordrNumb', headerName: '발주번호', width: 160, sortable: true, filter: true },
-    { field: 'ordrDate', headerName: '발주일', width: 110, cellStyle: { textAlign: 'center' }, sortable: true },
-    { field: 'deryDate', headerName: '납기일', width: 110, cellStyle: { textAlign: 'center' }, sortable: true },
+    { field: 'ordrNumb', headerName: '발주번호', width: 150, sortable: true, filter: true },
     { 
       field: 'itemSummary', 
       headerName: '품목요약', 
@@ -147,6 +146,9 @@ export default function OrdrHistory() {
         fontWeight: '500'
       }
     },
+    { field: 'ordrDate', headerName: '발주일', width: 110, cellStyle: { textAlign: 'center' }, sortable: true },
+    { field: 'deryDate', headerName: '납기일', width: 110, cellStyle: { textAlign: 'center' }, sortable: true },
+    
     { 
       field: 'statType', 
       headerName: '진행상태', 
@@ -219,8 +221,8 @@ export default function OrdrHistory() {
       </div>
 
       {/* 상단 통합 검색 바 */}
-      <div className="filter-bar" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', backgroundColor: '#f8f9fa', padding: '12px', borderRadius: '6px', marginBottom: '15px', border: '1px solid #e9ecef', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+      <div className="filter-bar" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', backgroundColor: '#f8f9fa', padding: '12px', borderRadius: '6px', marginBottom: '20px', border: '1px solid #e9ecef', alignItems: 'center' }}>
+        <div className="date-filter-group"  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#495057' }}>발주일자</label>
           <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={{ height: '32px', border: '1px solid #ced4da', borderRadius: '4px', padding: '0 8px', fontSize: '13px' }} />
           <span style={{ fontSize: '13px', color: '#868e96' }}>~</span>
@@ -259,7 +261,9 @@ export default function OrdrHistory() {
 
       {/* 중앙 메인 발주 내역 그리드 */}
       <div style={{ height: 'calc(100vh - 230px)', width: '100%' }}>
-        <div style={{ fontSize: '11px', color: '#868e96', marginBottom: '4px' }}>* '품목요약' 텍스트를 클릭하시면 상세 발주 내역 모달이 열립니다.</div>
+        <div style={{ fontSize: '11px', color: '#868e96', marginBottom: '14px' }}>
+          * '품목요약' 텍스트를 클릭하시면 상세 명세 모달이 열립니다.
+        </div>
         <AgGridReact
           ref={gridRef}
           rowData={masterRowData}

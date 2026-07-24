@@ -59,6 +59,7 @@ interface DbItem {
   miQnty: number;  // 미입고 수량
   deryDate: String;  // 납기일
   statType: string; // 발주종결여부
+  prevGaip: number;  // 이전 가입고 수량
 }
 
 interface gubnCode {
@@ -90,6 +91,8 @@ export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
   const [selectedOrdrNo, setSelectedOrdrNo] = useState('');
 
   const [itemSearchText, setItemSearchText] = useState(''); // 품목 검색어 상태
+
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);   // 모바일 여부 체크
 
   const getPastDate = (daysAgo: number) => {
     const d = new Date();
@@ -130,6 +133,15 @@ useEffect(() => {
     }
   };
   fetchCommonCodes();
+}, []);
+
+// 화면 리사이즈 이벤트 감지하여
+useEffect(() => {
+  const handleResize = () => {
+    setIsMobile(window.innerWidth <= 768);
+  };
+  window.addEventListener('resize', handleResize);
+  return () => window.removeEventListener('resize', handleResize);
 }, []);
 /* =============================================================== useEffect end =============================================================== */
 
@@ -192,7 +204,7 @@ useEffect(() => {
           
           ipgoQnty: 10,                 // 금회 납품수량 (기본값 10, 사용자가 입력함)
           prevQnty: item.prevQnty || 0, // 이전 가입고 수량
-          unit: item.unit || 'EA'
+          unit: item.unit || 'EA',
           //,statType: item.statType
         };
       });
@@ -270,26 +282,44 @@ useEffect(() => {
 
 
   /* ==================================== 그리드 컬럼 정의 및 기본 옵션 START ==================================== */
-  const [columnDefs] = useState<ColDef[]>([
-    { field: 'itemGrup', headerName: '구분', width: 80, sortable: true, filter: true, cellStyle: { textAlign: 'center' } },
-    { field: 'itemCode', headerName: '코드', width: 110, sortable: true, filter: true },
-    { field: 'atskCode', headerName: '품번', width: 110, sortable: true, filter: true },
-    { field: 'itemName', headerName: '품명', flex: 2, minWidth: 120, sortable: true, filter: true },
-    { field: 'ordrQnty', headerName: '발주수량', width: 90, cellStyle: { textAlign: 'right' } },
-    { field: 'apgoQnty', headerName: '총입고수량', width: 100, cellStyle: { textAlign: 'right' } },
-    { field: 'needQnty', headerName: '필요 입고수량', width: 110, cellStyle: { textAlign: 'right', color: '#ff6b6b', fontWeight: 'bold' } },
-    { 
-      field: 'ipgoQnty', 
-      headerName: '금회 납품수량', 
-      flex: 1, 
-      minWidth: 120, 
-      editable: true, 
-      cellEditor: 'agTextCellEditor', 
-      cellStyle: { textAlign: 'right', backgroundColor: '#e8f0f7', fontWeight: 'bold' } 
-    },
-    { field: 'prevIpgoQnty', headerName: '이전가입고수량', width: 110, cellStyle: { textAlign: 'right' } },
-    { field: 'unit', headerName: '단위', width: 60, cellStyle: { textAlign: 'left' } }
-  ]);
+  const columnDefs = useMemo<ColDef[]>(
+    (): ColDef[] => [
+      { field: 'itemGrup', headerName: '구분', width: 80, sortable: true, filter: true, cellStyle: { textAlign: 'center' }, hide: isMobile },
+      { field: 'itemCode', headerName: '코드', width: 110, sortable: true, filter: true, hide: isMobile },
+      { field: 'atskCode', headerName: '품번', width: 110, sortable: true, filter: true, hide: isMobile },
+      { field: 'itemName', headerName: '품명', flex: 2, minWidth: 120, sortable: true, filter: true },
+      { field: 'ordrQnty', headerName: '발주수량', width: 90, cellStyle: { textAlign: 'right' }, hide: isMobile  },
+      { field: 'apgoQnty', headerName: '총입고수량', width: 100, cellStyle: { textAlign: 'right' }, hide: isMobile  },
+      { 
+        field: 'needQnty', 
+        headerName: isMobile ? '필요' : '필요 입고수량', 
+        width: isMobile ? 75 : 110,
+        flex: isMobile ? 0 : undefined,
+        suppressSizeToFit: true,
+        cellStyle: { textAlign: 'right', color: '#ff6b6b', fontWeight: 'bold' } 
+      },
+      { 
+        field: 'ipgoQnty', 
+        headerName: isMobile ? '금회' : '금회 납품수량', 
+        width: isMobile ? 75 : 120,
+        flex: isMobile ? 0 : undefined,
+        suppressSizeToFit: true,
+        editable: true, 
+        cellEditor: 'agTextCellEditor', 
+        cellStyle: { textAlign: 'right', backgroundColor: '#e8f0f7', fontWeight: 'bold' } 
+      },
+      { 
+        field: 'prevQnty', 
+        headerName: isMobile ? '이전' : '이전가입고수량', 
+        width: isMobile ? 75 : 110,
+        flex: isMobile ? 0 : undefined,
+        suppressSizeToFit: true,
+        cellStyle: { textAlign: 'right' } 
+      },
+      { field: 'unit', headerName: '단위', width: 60, cellStyle: { textAlign: 'left' }, hide: isMobile  }
+    ],
+    [isMobile]
+  );
   /* ==================================== 그리드 컬럼 정의 및 기본 옵션 END ==================================== */
 
 
