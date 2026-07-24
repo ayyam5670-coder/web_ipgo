@@ -4,7 +4,8 @@ import { AllCommunityModule, ModuleRegistry, ValidationModule, themeAlpine } fro
 import type { ColDef, RowSelectionOptions } from 'ag-grid-community';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { useEffect } from 'react';
-import axios from 'axios';
+// import axios from 'axios';
+import { ipgoApi } from '../src/api/axiosInstances';
 
 ModuleRegistry.registerModules([AllCommunityModule, ValidationModule]);
 
@@ -15,11 +16,12 @@ const myCompactTheme = themeAlpine.withParams({
   fontSize: '12px',
 });
 
-const loginUser = {
-  userId: 'supplier_01',
-  compCode: 'C001',
-  compName: '(주)한국정밀'
-};
+// 로그인된 사용자 정보
+interface IpgoRegisterProps {
+  setActivePage: (page: string) => void;
+  userCode: string;
+  userName: string;
+}
 
 interface IpgoRegisterProps {
   setActivePage: (page: string) => void;
@@ -75,7 +77,7 @@ interface ordrMaster {
 }
 
 /* ========================================================================================================================================= */
-export default function IpgoRegister({ setActivePage }: IpgoRegisterProps) {
+export default function IpgoRegister({ setActivePage, userCode, userName }: IpgoRegisterProps) {
   const gridRef = useRef<AgGridReact>(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false); // 카메라 화면 토글 상태
   const [rowData, setRowData] = useState<BomItem[]>([]);
@@ -126,7 +128,7 @@ useEffect(() => {
 useEffect(() => {
   const fetchCommonCodes = async () => {
     try {
-      const response = await axios.get('http://127.0.0.1:8000/api/ipgo/item/gubn');
+      const response = await ipgoApi.get('/item/gubn');
       setItemGubnCodes(response.data); 
     } catch (error) {
       console.error("공통코드 조회 실패:", error);
@@ -152,7 +154,7 @@ useEffect(() => {
     setIsOrdrLoading(true);
     try {
       // 기간 및 검색어를 쿼리 파라미터로 포함하여 백엔드 호출
-      const response = await axios.get('http://127.0.0.1:8000/api/ipgo/ordr', {
+      const response = await ipgoApi.get('/ordr', {
         params: {
           startDate: ordrStartDate,
           endDate: ordrEndDate,
@@ -173,7 +175,7 @@ useEffect(() => {
   const handleSelectOrdr = async (ordrNumb: string) => {
     try {
       // 백엔드에서 발주 상세 품목들 받아오기
-      const response = await axios.get(`http://127.0.0.1:8000/api/ipgo/ordr/${ordrNumb}/items`);
+      const response = await ipgoApi.get(`/ordr/${ordrNumb}/items`);
       const rawItems = response.data; // 백엔드가 준 상태 그대로의 배열
 
       // 화면 상단 인풋박스에 발주번호
@@ -237,7 +239,7 @@ useEffect(() => {
     
     try {
       // 파이썬 FastAPI 서버의 전체 품목 조회 주소
-      const response = await axios.get('http://127.0.0.1:8000/api/ipgo/items');
+      const response = await ipgoApi.get('/items');
       
       // 서버가 준 데이터로 상태 업데이트 -> 모달 그리드에 바인딩됨
       setDbItemList(response.data); // 서버에서 받아온 데이터를 자바스크립트 배열 상태인 response.data로 넘겨주고 setDbItemList 함수 실행하면 dbItemList 배열 변수에 저장
@@ -254,7 +256,7 @@ useEffect(() => {
     setIsLoading(true);
     try {
       // 백엔드(FastAPI)로 셀렉트박스 값(itemGubn)과 검색어(searchText)를 파라미터로 전송
-      const response = await axios.get('http://127.0.0.1:8000/api/ipgo/items', {
+      const response = await ipgoApi.get('/items', {
         params: {
           itemGubn: selectedGubn,   // '21', '22' 등의 코드
           searchText: itemSearchText // 입력한 검색어
@@ -471,7 +473,7 @@ useEffect(() => {
       <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '2px solid #333', paddingBottom: '8px' }}>
         <h1 className="section-title">가입고 등록</h1>
         <div style={{ fontSize: '13px', color: '#666', fontWeight: 500 }}>
-          소속 업체: <span style={{ color: '#2b8a3e', fontWeight: 'bold' }}>{loginUser.compName}</span>
+          소속 업체: <span style={{ color: '#2b8a3e', fontWeight: 'bold' }}>{userName}</span>
         </div>
       </div>
       
@@ -479,7 +481,7 @@ useEffect(() => {
         <div className="form-grid">
           <div className="form-group">
             <label>업체명</label>
-            <input type="text" value="(주)한국정밀" readOnly style={{ background: '#f5f5f5', color: '#888' }} />
+            <input type="text" value= {userName} readOnly style={{ background: '#f5f5f5', color: '#888' }} />
           </div>
           <div className="form-group">
             <label>발주번호</label>
@@ -494,8 +496,8 @@ useEffect(() => {
             <label>입고 예정일시</label>
             <input type="datetime-local" defaultValue={new Date().toISOString().slice(0, 16)} />
           </div>
-          <div className="form-group"><label>운전자</label><input type="text" placeholder="예: 홍길동" required /></div>
-          <div className="form-group"><label>운전자 연락처</label><input type="text" placeholder="예: 010-1234-5678" required /></div>
+          {/* <div className="form-group"><label>운전자</label><input type="text" placeholder="예: 홍길동" required /></div>
+          <div className="form-group"><label>운전자 연락처</label><input type="text" placeholder="예: 010-1234-5678" required /></div> */}
         </div>
         
         {/* 품목 명세 헤더 및 컨트롤 버튼 조합바 */}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+// import axios from 'axios';
 import './App.css';
 import Sidebar from './Sidebar';
 import IpgoRegister from './IpgoRegister';
@@ -10,19 +11,15 @@ import logoImg from '../src/images/SHTECH_logo.png';
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [userId, setUserId] = useState<string>('');
-  const [userName, setUserName] = useState<string>(''); // 사용자명 State 추가
-  const [password, setPassword] = useState<string>('');
+  const [password, setPassword] = useState<string>(''); // 비밀번호 State 추가
   const [activePage, setActivePage] = useState<string>('register');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
 
   // 컴포넌트 마운트 시 세션 정보 확인 (새로고침 시에도 유지)
   useEffect(() => {
     const savedUserCode = sessionStorage.getItem('userCode');
-    const savedUserName = sessionStorage.getItem('userName'); // 세션에서 userName 읽기
-
-    if (savedUserCode && savedUserName) {
+    if (savedUserCode) {
       setUserId(savedUserCode);
-      setUserName(savedUserName);
       setIsLoggedIn(true);
     }
   }, []);
@@ -37,20 +34,14 @@ export default function App() {
 
     try {
       const response = await authApi.post('/login', {
+      // const response = await axios.post('/api/auth/login', {
         user_code: userId,
         password: password,
       });
 
       if (response.data.success) {
         const userCode = response.data.user_code;
-        const fetchedUserName = response.data.user_name;
-
-        // 세션 저장
-        sessionStorage.setItem('userCode', userCode);
-        sessionStorage.setItem('userName', fetchedUserName);
-
-        // State 업데이트
-        setUserName(fetchedUserName);
+        sessionStorage.setItem('userCode', userCode); // 세션 저장
         setIsLoggedIn(true);
         setPassword(''); // 비밀번호 필드 초기화
       } else {
@@ -64,13 +55,9 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    // 세션 삭제
-    sessionStorage.removeItem('userCode');
-    sessionStorage.removeItem('userName');
-
+    sessionStorage.removeItem('userCode'); // 세션 삭제
     setIsLoggedIn(false);
     setUserId('');
-    setUserName('');
     setPassword('');
     setActivePage('register');
   };
@@ -129,25 +116,9 @@ export default function App() {
         </div>
 
         <div className="content-body">
-          {activePage === 'register' && (
-            <IpgoRegister 
-              setActivePage={setActivePage} 
-              userCode={userId} 
-              userName={userName} 
-            />
-          )}
-          {activePage === 'history' && (
-            <IpgoHistory 
-              userCode={userId} 
-              userName={userName} 
-            />
-          )}
-          {activePage === 'orderHistory' && (
-            <OrdrHistory 
-              userCode={userId} 
-              userName={userName} 
-            />
-          )}
+          {activePage === 'register' && <IpgoRegister setActivePage={setActivePage} />}
+          {activePage === 'history' && <IpgoHistory />}
+          {activePage === 'orderHistory' && <OrdrHistory />}
         </div>
       </div>
     </div>

@@ -1,9 +1,10 @@
 /*import React, { useState, useMemo, useRef } from 'react';*/
 import { useState, useEffect, useCallback, useRef } from 'react';
-import axios from 'axios';
+// import axios from 'axios';
 import { AgGridReact } from 'ag-grid-react';
 import { themeAlpine } from 'ag-grid-community'; 
 import type { ColDef, CellClickedEvent } from 'ag-grid-community';
+import { ipgoApi } from '../src/api/axiosInstances';
 
 // 최신 Alpine 테마 기반 콤팩트 스타일 설정
 const myCompactTheme = themeAlpine.withParams({
@@ -12,12 +13,11 @@ const myCompactTheme = themeAlpine.withParams({
   fontSize: '12px',
 });
 
-// 가상의 로그인된 사용자 정보
-const loginUser = {
-  userId: 'supplier_01',
-  compCode: 'C001',
-  compName: '(주)한국정밀'
-};
+// 로그인된 사용자 정보
+interface OrdrHistoryProps {
+  userCode: string;
+  userName: string;
+}
 
 // 백엔드 API 발주 마스터 데이터 인터페이스
 interface OrderMaster {
@@ -45,7 +45,7 @@ interface OrderDetail {
   unit: string;        // 단위
 }
 
-export default function OrdrHistory() {
+export default function OrdrHistory({ userCode, userName }: OrdrHistoryProps) {
   const gridRef = useRef<AgGridReact>(null);
   
   // 기본 날짜 검색 범위 설정 (최근 30일)
@@ -81,7 +81,7 @@ export default function OrdrHistory() {
       if (searchStatus === '진행중') statTypeParam = 'N';
       else if (searchStatus === '종결') statTypeParam = 'Y';
 
-      const response = await axios.get('http://127.0.0.1:8000/api/ipgo/menu/ordrHistory', {
+      const response = await ipgoApi.get('/menu/ordrHistory', {
         params: {
           startDate: startDate,
           endDate: endDate,
@@ -116,7 +116,7 @@ export default function OrdrHistory() {
 
       try {
         // 기존 입고 화면에서 사용하던 발주 상세 품목 API 재사용
-        const response = await axios.get(`http://127.0.0.1:8000/api/ipgo/ordr/${ordr_numb}/items`);
+        const response = await ipgoApi.get(`/ordr/${ordr_numb}/items`);
         setModalRowData(response.data);
       } catch (error) {
         console.error("❌ 발주 상세 품목 조회 실패:", error);
@@ -216,7 +216,7 @@ export default function OrdrHistory() {
           발주 내역 현황
         </h2>
         <div style={{ fontSize: '13px', color: '#666', fontWeight: 500 }}>
-          소속 업체: <span style={{ color: '#2b8a3e', fontWeight: 'bold' }}>{loginUser.compName}</span>
+          소속 업체: <span style={{ color: '#2b8a3e', fontWeight: 'bold' }}>{userName}</span>
         </div>
       </div>
 

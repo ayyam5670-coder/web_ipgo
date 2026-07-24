@@ -3,8 +3,9 @@ import { AgGridReact } from 'ag-grid-react';
 import type { ColDef, CellClickedEvent } from 'ag-grid-community';
 import { ModuleRegistry, AllCommunityModule, themeAlpine } from 'ag-grid-community';
 import { useReactToPrint } from 'react-to-print';
-import axios from 'axios';
+// import axios from 'axios';
 import { IpgoPrintSheet } from '../src/report/IpgoPrint';
+import { ipgoApi } from '../src/api/axiosInstances';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -14,12 +15,11 @@ const myCompactTheme = themeAlpine.withParams({
   fontSize: '12px',
 });
 
-// 사용자 정보
-const loginUser = {
-  userId: 'supplier_01',
-  compCode: 'C001',
-  compName: '(주)한국정밀'
-};
+// 로그인된 사용자 정보
+interface IpgoHistoryProps {
+  userCode: string;
+  userName: string;
+}
 
 // 1. 메인 목록 API 응답 구조 (SELECT_GAIP_HISTOTY_MAIN_LIST 매핑)
 interface IpgoHistoryMaster {
@@ -45,7 +45,7 @@ interface IpgoHistoryDetail {
   statType: 'N' | 'Y';
 }
 
-export default function IpgoHistory() {
+export default function IpgoHistory({ userCode, userName }: IpgoHistoryProps) {
   const mainGridRef = useRef<AgGridReact>(null);
   const printComponentRef = useRef<HTMLDivElement>(null);
 
@@ -105,7 +105,7 @@ export default function IpgoHistory() {
       else if (searchStatus === '종결' || searchStatus === 'Y') statTypeParam = 'Y';
 
       // 2. 백엔드 API 호출
-      const response = await axios.get('http://127.0.0.1:8000/api/ipgo/menu/gaipHistory', {
+      const response = await ipgoApi.get('/menu/gaipHistory', {
         params: {
           startDate: startDate,
           endDate: endDate,
@@ -132,7 +132,7 @@ export default function IpgoHistory() {
   const fetchDetailItems = async (gaip_numb: string) => {
   setModalLoading(true);
   try {
-    const response = await axios.get(`http://127.0.0.1:8000/api/ipgo/gaip/${gaip_numb}/items`);
+    const response = await ipgoApi.get(`/gaip/${gaip_numb}/items`);
     setModalRowData(response.data);
   } catch (error) {
     console.error("❌ 가입고 상세 품목 조회 실패:", error);
@@ -212,7 +212,7 @@ export default function IpgoHistory() {
           가입고 내역 현황
         </h2>
         <div style={{ fontSize: '13px', color: '#666', fontWeight: 500 }}>
-          소속 업체: <span style={{ color: '#2b8a3e', fontWeight: 'bold' }}>{loginUser.compName}</span>
+          소속 업체: <span style={{ color: '#2b8a3e', fontWeight: 'bold' }}>{userName}</span>
         </div>
       </div>
 
