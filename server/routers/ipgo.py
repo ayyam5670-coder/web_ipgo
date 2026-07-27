@@ -1,23 +1,42 @@
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
+import os
 import pyodbc
+from dotenv import load_dotenv
 from queries import ipgo_queries
 from typing import List, Optional
 
 ipgo_router = APIRouter(prefix="/api/ipgo", tags=["가입고 관리"])
 auth_router = APIRouter(prefix="/api/auth", tags=["인증 관리"])
 
+# .env 환경변수 로드
+load_dotenv()
 
 # DB 연결 함수 (라우터 내부에서 공통으로 사용)
 def get_db_connection():
-    return pyodbc.connect(
-        'DRIVER={ODBC Driver 17 for SQL Server};'
-        'SERVER=121.150.122.239,50309;'        # 실제 DB 서버 IP 주소 (예: 192.168.0.10,포트)
-        'DATABASE=SHTECH_DB_251023_WBS;'       # 조회할 데이터베이스 이름
-        'UID=sa;'                              # SQL Server 접속 ID
-        'PWD=wbs!sys!50309;'                   # SQL Server 접속 비밀번호
-        'Timeout=5;'                           # 연결 대기 제한 시간 (5초)
+    server = os.getenv("SERVER")
+    database = os.getenv("DATABASE")
+    uid = os.getenv("UID")
+    pwd = os.getenv("PWD")
+    timeout = int(os.getenv("TIMEOUT", 30))
+    driver = os.getenv("DRIVER", "ODBC Driver 17 for SQL Server")
+
+    conn_str = (
+        f"DRIVER={{{driver}}};"
+        f"SERVER={server};"
+        f"DATABASE={database};"
+        f"UID={uid};"
+        f"PWD={pwd};"
+        f"Encrypt=no;"  # 필요시 보안/인증서 관련 옵션 추가
     )
+
+    try:
+        # timeout 매개변수를 지정하여 응답 지연 시 연결 대기 시간을 제어합니다.
+        conn = pyodbc.connect(conn_str, timeout=timeout)
+        return conn
+    except Exception as e:
+        print(f"[DB Connection Error] {e}")
+        raise e
 
 # ----------------------------------------------------
 # 품목추가 버튼 모달용 전체 품목 리스트 조회 API
