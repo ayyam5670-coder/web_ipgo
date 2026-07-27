@@ -1,16 +1,50 @@
-# 1. 의존성 라이브러리 및 패키지 매니저 (최우선 제외)
+# ==========================================
+# 1. 환경 변수 및 보안 파일 (최우선 제외)
+# ==========================================
+.env
+.env.*
+!.env.example
+*.local
+
+# ==========================================
+# 2. Node.js / React (web_ipgo) 관련
+# ==========================================
+# 의존성 라이브러리
 node_modules/
 /jspm_packages/
 .pnpm-store/
 
-# 2. 프로덕션 빌드 결과물 (Vite, CRA, Next.js 등 배포 파일)
+# 빌드 결과물
 dist/
 dist-ssr/
 build/
 out/
 .next/
 
-# 3. 디버그 및 시스템 로그 파일
+# ==========================================
+# 3. Python / FastAPI (server) 관련
+# ==========================================
+# 캐시 및 바이트코드
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 가상환경 (Virtual Environments)
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# pytest 및 테스트 캐시
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ==========================================
+# 4. 디버그 및 시스템 로그 파일
+# ==========================================
 logs
 *.log
 npm-debug.log*
@@ -20,14 +54,18 @@ pnpm-debug.log*
 lerna-debug.log*
 .eslintcache
 
-# 4. 운영체제(OS) 및 시스템 찌꺼기 파일
+# ==========================================
+# 5. 운영체제(OS) 및 시스템 찌꺼기 파일
+# ==========================================
 .DS_Store
 .AppleDouble
 .LSOverride
 Thumbs.db
 ehthumbs.db
 
-# 5. 에디터 및 개발 툴 설정 (VS Code, IntelliJ 등)
+# ==========================================
+# 6. 에디터 및 개발 툴 설정 (VS Code, IntelliJ 등)
+# ==========================================
 .vscode/*
 !.vscode/extensions.json
 .idea/
@@ -36,11 +74,3 @@ ehthumbs.db
 *.njsproj
 *.sln
 *.sw?
-
-# 6. 환경 변수 및 보안 파일 (로컬 설정 및 API 키)
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-*.local
