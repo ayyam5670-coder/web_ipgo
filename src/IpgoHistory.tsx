@@ -43,6 +43,7 @@ interface IpgoHistoryDetail {
   gaipQnty: number;   // 금회/가입고 수량
   unit: string;       // 단위
   statType: 'N' | 'Y';
+  ordrDetl: string;   // ordr_numb
 }
 
 export default function IpgoHistory({ userCode, userName }: IpgoHistoryProps) {
@@ -202,6 +203,7 @@ export default function IpgoHistory({ userCode, userName }: IpgoHistoryProps) {
         return { color: '#2e7d32', fontWeight: 'bold', textAlign: 'center' };
       },
     },
+    { field: 'ordrDetl', headerName: '주문번호상세', hide: true }
   ]);
 
   return (

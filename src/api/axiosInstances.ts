@@ -11,12 +11,15 @@ export const authApi = axios.create({
   baseURL: '/api/auth',
 });
 
-// Interceptor(가로채기)를 써서 세션의 userCode를 모든 요청에 자동으로 실어줄 수도 있습니다!
+// Interceptor(가로채기)를 써서 세션의 userCode를 모든 요청에 자동으로 실어줄 수도 있음
 ipgoApi.interceptors.request.use((config) => {
   const userCode = sessionStorage.getItem('userCode');
   if (userCode) {
     // 예: Query Parameter나 Header에 user_code 자동 추가
-    config.params = { ...config.params, userCode };
+    config.params = { 
+      ...config.params,
+      cust_code: userCode,
+     };
   }
   return config;
 });

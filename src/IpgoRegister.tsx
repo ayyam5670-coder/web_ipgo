@@ -40,6 +40,7 @@ interface BomItem {
   needQnty: number; 
   ipgoQnty: number;
   unit: string;
+  ordrDetl: string;
 }
 
 // 전역 변수로 html5QrScanner를 선언하여 스캐너 인스턴스를 관리
@@ -59,9 +60,10 @@ interface DbItem {
   ordrQnty: number;  // 발주 수량
   apgoQnty: number;  // 총 입고 수량
   miQnty: number;  // 미입고 수량
-  deryDate: String;  // 납기일
+  deryDate: string;  // 납기일
   statType: string; // 발주종결여부
   prevGaip: number;  // 이전 가입고 수량
+  ordrDetl: string;  // ordr_numb
 }
 
 interface gubnCode {
@@ -93,6 +95,11 @@ export default function IpgoRegister({ setActivePage, userCode, userName }: Ipgo
   const [selectedOrdrNo, setSelectedOrdrNo] = useState('');
 
   const [itemSearchText, setItemSearchText] = useState(''); // 품목 검색어 상태
+
+  // 입고예정일시 state
+  const [ipgoDate, setIpgoDate] = useState<string>(
+  new Date().toISOString().slice(0, 16)
+);
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);   // 모바일 여부 체크
 
@@ -207,6 +214,7 @@ useEffect(() => {
           ipgoQnty: 10,                 // 금회 납품수량 (기본값 10, 사용자가 입력함)
           prevQnty: item.prevQnty || 0, // 이전 가입고 수량
           unit: item.unit || 'EA',
+          ordrDetl: item.ordrDetl,
           //,statType: item.statType
         };
       });
@@ -282,11 +290,10 @@ useEffect(() => {
   /* ========================== 품목 추가 모달 관련 상태 및 함수 end ========================== */
 
 
-
   /* ==================================== 그리드 컬럼 정의 및 기본 옵션 START ==================================== */
   const columnDefs = useMemo<ColDef[]>(
     (): ColDef[] => [
-      { field: 'itemGrup', headerName: '구분', width: 80, sortable: true, filter: true, cellStyle: { textAlign: 'center' }, hide: isMobile },
+      { field: 'itemGrup', headerName: '구분', width: 80, sortable: true, filter: true, hide: isMobile },
       { field: 'itemCode', headerName: '코드', width: 110, sortable: true, filter: true, hide: isMobile },
       { field: 'atskCode', headerName: '품번', width: 110, sortable: true, filter: true, hide: isMobile },
       { field: 'itemName', headerName: '품명', flex: 2, minWidth: 120, sortable: true, filter: true },
@@ -318,7 +325,8 @@ useEffect(() => {
         suppressSizeToFit: true,
         cellStyle: { textAlign: 'right' } 
       },
-      { field: 'unit', headerName: '단위', width: 60, cellStyle: { textAlign: 'left' }, hide: isMobile  }
+      { field: 'unit', headerName: '단위', width: 60, cellStyle: { textAlign: 'left' }, hide: isMobile  },
+      { field: 'ordrDetl', headerName: '주문번호상세', hide: true}
     ],
     [isMobile]
   );
@@ -349,7 +357,8 @@ useEffect(() => {
       needQnty: 0,
       ipgoQnty: 10,
       prevQnty: 0,
-      unit: item.unit || ''
+      unit: item.unit || '',
+      ordrDetl: item.ordrDetl
     };
     setRowData(prevRows => [...prevRows, newRow]);
     setIsItemModalOpen(false);
@@ -370,12 +379,6 @@ useEffect(() => {
     // 체크된 품목코드(itemCode)를 추출하여 목록에서 필터링
     const selectedItemCodes = selectedRows.map(row => row.itemCode);
     setRowData(prevRows => prevRows.filter(row => !selectedItemCodes.includes(row.itemCode)));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    alert('가입고 등록이 완료되었습니다.\n내역 화면으로 이동합니다.'); 
-    setActivePage('history');
   };
 
 
@@ -462,6 +465,86 @@ useEffect(() => {
   // 모달창의 발주 목록 검색 결과도 함께 비워야하면 추가
   // setOrdrData([]); 
 };
+
+
+/* ==================================================== 가입고 정보 등록 버튼 이벤트 ==================================================== */
+// 2. 폼 제출 (가입고 정보 등록 버튼 클릭 시)
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  // ① 발주서 선택 여부 검증
+  if (!selectedOrdrNo) {
+    alert("발주번호를 먼저 검색하여 선택해 주세요.");
+    return;
+  }
+
+  // ② AG Grid에서 현재 데이터 전체 추출
+  // (gridRef가 설정되어 있다고 가정합니다)
+  const rowData: BomItem[] = [];
+  gridRef.current?.api.forEachNode((node) => {
+    if (node.data) rowData.push(node.data);
+  });
+
+  // ③ '금회 납품수량(ipgoQnty)'이 0보다 큰 품목만 필터링
+  const validItems = rowData.filter((item) => Number(item.ipgoQnty) > 0);
+
+  if (validItems.length === 0) {
+    alert("금회 납품수량이 입력된 품목이 없습니다.\n수량을 클릭하여 입력해 주세요.");
+    return;
+  }
+
+  // ④ 날짜 포맷 가공 (예: '2026-07-27T14:30' -> '20260727')
+  const formattedIpgoDate = ipgoDate.replace(/[-T:]/g, "").slice(0, 8);
+
+  // ⑤ 백엔드 Pydantic (GaipgoCreateRequest) 규격에 맞춘 Payload 생성
+  const payload = {
+    ipgoDate: formattedIpgoDate,        // 가입고 일자 ('20260727')
+    custCode: userCode,                 // 업체코드
+    userName: userName,                 // 담당자/업체명
+    ordrNumb: selectedOrdrNo,           // 발주번호 (예: 'ORD20260727001')
+    teleNumb: "",                       // 필요 시 추가
+    storCode: "E010",                   // 기본 창고코드
+    memoXxxx: "",                       // 비고
+    statType: "Y",
+    
+    // 백엔드 DETL 저장용 품목 배열 (GaipgoDetailItem)
+    items: validItems.map((item) => ({
+      itemCode: item.itemCode,
+      ordrDetl: item.ordrDetl,          // HIDE 상태 컬럼의 주문상세 Key
+      gaipQnty: Number(item.ipgoQnty),  // 금회 납품수량
+      memoXxxx: ""
+    }))
+  };
+
+  // 백엔드 API 호출
+  try {
+    const response = await fetch("/api/ipgo/create", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const result = await response.json();
+
+    if (response.ok && result.success) {
+      alert(`가입고 정보가 정상적으로 등록되었습니다!\n(가입고번호: ${result.ipgoNumb})`);
+      
+      // 등록 성공 후 목록 초기화
+      if (typeof clearAll === 'function') {
+        clearAll();
+      }
+    } else {
+      alert(`등록 실패: ${result.detail || "처리 중 오류가 발생했습니다."}`);
+    }
+  } catch (error) {
+    console.error("가입고 등록 중 통신 에러:", error);
+    alert("서버와 통신하는 중 에러가 발생했습니다.");
+  }
+};
+
+
 
 
 
