@@ -17,8 +17,8 @@ const myCompactTheme = themeAlpine.withParams({
 
 // 로그인된 사용자 정보
 interface IpgoHistoryProps {
-  userCode: string;
-  userName: string;
+  custCode: string;
+  custName: string;
 }
 
 // 1. 메인 목록 API 응답 구조 (SELECT_GAIP_HISTOTY_MAIN_LIST 매핑)
@@ -46,7 +46,7 @@ interface IpgoHistoryDetail {
   ordrDetl: string;   // ordr_numb
 }
 
-export default function IpgoHistory({ userCode, userName }: IpgoHistoryProps) {
+export default function IpgoHistory({ custCode, custName }: IpgoHistoryProps) {
   const mainGridRef = useRef<AgGridReact>(null);
   const printComponentRef = useRef<HTMLDivElement>(null);
 
@@ -214,7 +214,7 @@ export default function IpgoHistory({ userCode, userName }: IpgoHistoryProps) {
           가입고 내역 현황
         </h2>
         <div style={{ fontSize: '13px', color: '#666', fontWeight: 500 }}>
-          소속 업체: <span style={{ color: '#2b8a3e', fontWeight: 'bold' }}>{userName}</span>
+          소속 업체: <span style={{ color: '#2b8a3e', fontWeight: 'bold' }}>{custName}</span>
         </div>
       </div>
 

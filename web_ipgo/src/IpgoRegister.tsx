@@ -19,8 +19,8 @@ const myCompactTheme = themeAlpine.withParams({
 // 로그인된 사용자 정보
 interface IpgoRegisterProps {
   setActivePage: (page: string) => void;
-  userCode: string;
-  userName: string;
+  custCode: string;
+  custName: string;
 }
 
 interface IpgoRegisterProps {
@@ -64,6 +64,8 @@ interface DbItem {
   statType: string; // 발주종결여부
   prevGaip: number;  // 이전 가입고 수량
   ordrDetl: string;  // ordr_numb
+  userName: string;
+  teleNumb: string;
 }
 
 interface gubnCode {
@@ -79,7 +81,7 @@ interface ordrMaster {
 }
 
 /* ========================================================================================================================================= */
-export default function IpgoRegister({ setActivePage, userCode, userName }: IpgoRegisterProps) {
+export default function IpgoRegister({ setActivePage, custCode, custName }: IpgoRegisterProps) {
   const gridRef = useRef<AgGridReact>(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false); // 카메라 화면 토글 상태
   const [rowData, setRowData] = useState<BomItem[]>([]);
@@ -96,10 +98,21 @@ export default function IpgoRegister({ setActivePage, userCode, userName }: Ipgo
 
   const [itemSearchText, setItemSearchText] = useState(''); // 품목 검색어 상태
 
+
+  // 로컬(한국) 시간 기준 datetime-local 포맷 생성 함수
+  const getLocalDatetimeString = () => {
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000; // 타임존 오프셋(밀리초)
+    return new Date(now.getTime() - offset).toISOString().slice(0, 16);
+  };
   // 입고예정일시 state
-  const [ipgoDate, setIpgoDate] = useState<string>(
-  new Date().toISOString().slice(0, 16)
-);
+  const [ipgoDate, setIpgoDate] = useState<string>(getLocalDatetimeString());
+
+  const formattedIpgoDate = ipgoDate.replace(/[-T:]/g, "").slice(0, 8);
+
+  // 운전자 및 연락처 상태 (userName, teleNumb)
+  const [userName, setUserName] = useState(''); // 운전자명
+  const [teleNumb, setTeleNumb] = useState(''); // 운전자 연락처
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);   // 모바일 여부 체크
 
@@ -468,24 +481,23 @@ useEffect(() => {
 
 
 /* ==================================================== 가입고 정보 등록 버튼 이벤트 ==================================================== */
-// 2. 폼 제출 (가입고 정보 등록 버튼 클릭 시)
+// 폼 제출 (가입고 정보 등록 버튼 클릭 시)
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
 
-  // ① 발주서 선택 여부 검증
+  // 발주서 선택 여부 검증
   if (!selectedOrdrNo) {
     alert("발주번호를 먼저 검색하여 선택해 주세요.");
     return;
   }
 
-  // ② AG Grid에서 현재 데이터 전체 추출
-  // (gridRef가 설정되어 있다고 가정합니다)
+  // AG Grid에서 현재 데이터 전체 추출
   const rowData: BomItem[] = [];
   gridRef.current?.api.forEachNode((node) => {
     if (node.data) rowData.push(node.data);
   });
 
-  // ③ '금회 납품수량(ipgoQnty)'이 0보다 큰 품목만 필터링
+  // '금회 납품수량(ipgoQnty)'이 0보다 큰 품목만 필터링
   const validItems = rowData.filter((item) => Number(item.ipgoQnty) > 0);
 
   if (validItems.length === 0) {
@@ -493,16 +505,14 @@ const handleSubmit = async (e: React.FormEvent) => {
     return;
   }
 
-  // ④ 날짜 포맷 가공 (예: '2026-07-27T14:30' -> '20260727')
-  const formattedIpgoDate = ipgoDate.replace(/[-T:]/g, "").slice(0, 8);
 
-  // ⑤ 백엔드 Pydantic (GaipgoCreateRequest) 규격에 맞춘 Payload 생성
+  // 백엔드 Pydantic (GaipgoCreateRequest) 규격에 맞춘 Payload 생성
   const payload = {
     ipgoDate: formattedIpgoDate,        // 가입고 일자 ('20260727')
-    custCode: userCode,                 // 업체코드
-    userName: userName,                 // 담당자/업체명
+    custCode: custCode,                 // 업체코드
+    userName: userName,               // 담당자
     ordrNumb: selectedOrdrNo,           // 발주번호 (예: 'ORD20260727001')
-    teleNumb: "",                       // 필요 시 추가
+    teleNumb: teleNumb,                       // 필요 시 추가
     storCode: "E010",                   // 기본 창고코드
     memoXxxx: "",                       // 비고
     statType: "Y",
@@ -556,7 +566,7 @@ const handleSubmit = async (e: React.FormEvent) => {
       <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '2px solid #333', paddingBottom: '8px' }}>
         <h1 className="section-title">가입고 등록</h1>
         <div style={{ fontSize: '13px', color: '#666', fontWeight: 500 }}>
-          소속 업체: <span style={{ color: '#2b8a3e', fontWeight: 'bold' }}>{userName}</span>
+          소속 업체: <span style={{ color: '#2b8a3e', fontWeight: 'bold' }}>{custName}</span>
         </div>
       </div>
       
@@ -564,7 +574,7 @@ const handleSubmit = async (e: React.FormEvent) => {
         <div className="form-grid">
           <div className="form-group">
             <label>업체명</label>
-            <input type="text" value= {userName} readOnly style={{ background: '#f5f5f5', color: '#888' }} />
+            <input type="text" value= {custName} readOnly style={{ background: '#f5f5f5', color: '#888' }} />
           </div>
           <div className="form-group">
             <label>발주번호</label>
@@ -577,10 +587,15 @@ const handleSubmit = async (e: React.FormEvent) => {
           </div>
           <div className="form-group">
             <label>입고 예정일시</label>
-            <input type="datetime-local" defaultValue={new Date().toISOString().slice(0, 16)} />
+            <input 
+                type="datetime-local" 
+                value={ipgoDate} 
+                onChange={(e) => setIpgoDate(e.target.value)} 
+                required
+            />
           </div>
-          {/* <div className="form-group"><label>운전자</label><input type="text" placeholder="예: 홍길동" required /></div>
-          <div className="form-group"><label>운전자 연락처</label><input type="text" placeholder="예: 010-1234-5678" required /></div> */}
+          <div className="form-group"><label>운전자</label><input type="text" value={userName} onChange={(e) => setUserName(e.target.value)} placeholder="예: 홍길동" required /></div>
+          <div className="form-group"><label>운전자 연락처</label><input type="text" value={teleNumb} onChange={(e) => setTeleNumb(e.target.value)} placeholder="예: 010-1234-5678" required /></div>
         </div>
         
         {/* 품목 명세 헤더 및 컨트롤 버튼 조합바 */}

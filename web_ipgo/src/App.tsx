@@ -9,20 +9,20 @@ import logoImg from '../src/images/SHTECH_logo.png';
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-  const [userId, setUserId] = useState<string>('');
-  const [userName, setUserName] = useState<string>(''); // 사용자명 State 추가
+  const [custId, setCustId] = useState<string>('');
+  const [custName, setCustName] = useState<string>(''); // 사용자명 State 추가
   const [password, setPassword] = useState<string>('');
   const [activePage, setActivePage] = useState<string>('register');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
 
   // 컴포넌트 마운트 시 세션 정보 확인 (새로고침 시에도 유지)
   useEffect(() => {
-    const savedUserCode = sessionStorage.getItem('userCode');
-    const savedUserName = sessionStorage.getItem('userName'); // 세션에서 userName 읽기
+    const savedCustCode = sessionStorage.getItem('custCode');
+    const savedCustName = sessionStorage.getItem('custName'); // 세션에서 custName 읽기
 
-    if (savedUserCode && savedUserName) {
-      setUserId(savedUserCode);
-      setUserName(savedUserName);
+    if (savedCustCode && savedCustName) {
+      setCustId(savedCustCode);
+      setCustName(savedCustName);
       setIsLoggedIn(true);
     }
   }, []);
@@ -30,27 +30,27 @@ export default function App() {
   // 실제 로그인 연동 함수
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userId || !password) {
+    if (!custId || !password) {
       alert('아이디와 비밀번호를 모두 입력해주세요.');
       return;
     }
 
     try {
       const response = await authApi.post('/login', {
-        user_code: userId,
+        custCode: custId,
         password: password,
       });
 
       if (response.data.success) {
-        const userCode = response.data.user_code;
-        const fetchedUserName = response.data.user_name;
+        const custCode = response.data.cust_code;
+        const fetchedCustName = response.data.cust_name;
 
         // 세션 저장
-        sessionStorage.setItem('userCode', userCode);
-        sessionStorage.setItem('userName', fetchedUserName);
+        sessionStorage.setItem('custCode', custCode);
+        sessionStorage.setItem('custName', fetchedCustName);
 
         // State 업데이트
-        setUserName(fetchedUserName);
+        setCustName(fetchedCustName);
         setIsLoggedIn(true);
         setPassword(''); // 비밀번호 필드 초기화
       } else {
@@ -65,12 +65,12 @@ export default function App() {
 
   const handleLogout = () => {
     // 세션 삭제
-    sessionStorage.removeItem('userCode');
-    sessionStorage.removeItem('userName');
+    sessionStorage.removeItem('custCode');
+    sessionStorage.removeItem('custName');
 
     setIsLoggedIn(false);
-    setUserId('');
-    setUserName('');
+    setCustId('');
+    setCustName('');
     setPassword('');
     setActivePage('register');
   };
@@ -86,8 +86,8 @@ export default function App() {
               type="text" 
               className="login-input" 
               placeholder="협력사 코드 (ID)"
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
+              value={custId}
+              onChange={(e) => setCustId(e.target.value)}
               required
             />
             <input 
@@ -132,20 +132,20 @@ export default function App() {
           {activePage === 'register' && (
             <IpgoRegister 
               setActivePage={setActivePage} 
-              userCode={userId} 
-              userName={userName} 
+              custCode={custId} 
+              custName={custName} 
             />
           )}
           {activePage === 'history' && (
             <IpgoHistory 
-              userCode={userId} 
-              userName={userName} 
+              custCode={custId} 
+              custName={custName} 
             />
           )}
           {activePage === 'orderHistory' && (
             <OrdrHistory 
-              userCode={userId} 
-              userName={userName} 
+              custCode={custId} 
+              custName={custName} 
             />
           )}
         </div>

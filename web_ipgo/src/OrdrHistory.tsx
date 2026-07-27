@@ -15,8 +15,8 @@ const myCompactTheme = themeAlpine.withParams({
 
 // 로그인된 사용자 정보
 interface OrdrHistoryProps {
-  userCode: string;
-  userName: string;
+  custCode: string;
+  custName: string;
 }
 
 // 백엔드 API 발주 마스터 데이터 인터페이스
@@ -45,7 +45,7 @@ interface OrderDetail {
   unit: string;        // 단위
 }
 
-export default function OrdrHistory({ userCode, userName }: OrdrHistoryProps) {
+export default function OrdrHistory({ custCode, custName }: OrdrHistoryProps) {
   const gridRef = useRef<AgGridReact>(null);
   
   // 기본 날짜 검색 범위 설정 (최근 30일)
@@ -216,7 +216,7 @@ export default function OrdrHistory({ userCode, userName }: OrdrHistoryProps) {
           발주 내역 현황
         </h2>
         <div style={{ fontSize: '13px', color: '#666', fontWeight: 500 }}>
-          소속 업체: <span style={{ color: '#2b8a3e', fontWeight: 'bold' }}>{userName}</span>
+          소속 업체: <span style={{ color: '#2b8a3e', fontWeight: 'bold' }}>{custName}</span>
         </div>
       </div>
 

@@ -449,7 +449,7 @@ def get_order_menu_masters(
 # ================================================================ 로그인 관련 라우터
 # Request Body 스키마
 class LoginRequest(BaseModel):
-    user_code: str
+    custCode: str
     password: str
 
 @auth_router.post("/login")
@@ -459,7 +459,7 @@ def login(req: LoginRequest):
     
     try:
         # pyodbc 파라미터 순서: (비밀번호, 유저코드) -> MATCHED_USER_LOGIN의 ? 순서와 일치
-        cursor.execute(ipgo_queries.MATCHED_USER_LOGIN, (req.password, req.user_code))
+        cursor.execute(ipgo_queries.MATCHED_USER_LOGIN, (req.password, req.custCode))
         row = cursor.fetchone()
         
         # 1. 유저 코드가 존재하지 않는 경우
@@ -469,8 +469,8 @@ def login(req: LoginRequest):
                 detail="존재하지 않는 협력사 코드입니다."
             )
         
-        user_code = row[0]
-        user_name = row[1]
+        custCode = row[0]
+        custName = row[1]
         is_matched = row[2]  # PWDCOMPARE 결과 (1: 일치, 0: 불일치)
         
         # 2. 비밀번호 불일치
@@ -484,8 +484,8 @@ def login(req: LoginRequest):
         return {
             "success": True,
             "message": "로그인 성공",
-            "user_code": user_code,
-            "user_name": user_name
+            "cust_code": custCode,
+            "cust_name": custName
         }
 
     except HTTPException as e:
