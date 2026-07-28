@@ -3,19 +3,20 @@ import { AgGridReact } from 'ag-grid-react';
 import type { ColDef, CellClickedEvent } from 'ag-grid-community';
 import { ModuleRegistry, AllCommunityModule, themeAlpine } from 'ag-grid-community';
 import { useReactToPrint } from 'react-to-print';
-// import axios from 'axios';
 import { IpgoPrintSheet } from '../src/report/IpgoPrint';
 import { ipgoApi } from '../src/api/axiosInstances';
 
+// AG Grid 모듈 등록
 ModuleRegistry.registerModules([AllCommunityModule]);
 
+// AG Grid 커스텀 테마 설정 (컴팩트 스타일)
 const myCompactTheme = themeAlpine.withParams({
   headerHeight: 32,
   rowHeight: 28,
   fontSize: '12px',
 });
 
-// 로그인된 사용자 정보
+// 로그인된 사용자 정보 Props
 interface IpgoHistoryProps {
   custCode: string;
   custName: string;
@@ -29,7 +30,7 @@ interface IpgoHistoryMaster {
   saveDate: string;    // 등록일/저장일
   lastDate: string;    // 최근입고일
   itemSummary: string; // 품목 요약 (품목건수 표시용)
-  statType: 'N' | 'Y'; // 'N': 진행중, 'Y': 종결
+  statType: 'Y' | 'N'; // 'N': 진행중, 'Y': 종결
 }
 
 // 2. 모달 상세 목록 API 응답 구조 (SELECT_GAIP_HISTORY_DETL_ITEMS 매핑)
@@ -42,7 +43,7 @@ interface IpgoHistoryDetail {
   miQnty: number;     // 미입고/필요수량
   gaipQnty: number;   // 금회/가입고 수량
   unit: string;       // 단위
-  statType: 'N' | 'Y';
+  statType: 'Y' | 'N';
   ordrDetl: string;   // ordr_numb
 }
 
@@ -50,7 +51,7 @@ export default function IpgoHistory({ custCode, custName }: IpgoHistoryProps) {
   const mainGridRef = useRef<AgGridReact>(null);
   const printComponentRef = useRef<HTMLDivElement>(null);
 
-  // 로딩 상태 및 데이터 상태
+  // 로딩 및 데이터 상태 관리
   const [loading, setLoading] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
   const [masterRowData, setMasterRowData] = useState<IpgoHistoryMaster[]>([]);
@@ -65,34 +66,81 @@ export default function IpgoHistory({ custCode, custName }: IpgoHistoryProps) {
     documentTitle: '가입고_등록_내역서',
   });
 
-  const handlePrintHistory = () => {
-    const selectedNodes = mainGridRef.current?.api?.getSelectedNodes();
-    const selectedData = selectedNodes?.map((node: any) => node.data) || [];
+  // 선택된 항목 인쇄 핸들러 (비동기 상세 API 조회 추가)
+const handlePrintHistory = async () => {
+  const selectedNodes = mainGridRef.current?.api?.getSelectedNodes();
+  
+  // node.data가 존재하는 값만 필터링 (마스터 행 목록)
+  const selectedMasters = selectedNodes
+    ?.map((node: any) => node.data)
+    .filter((data: any) => data !== undefined && data !== null) || [];
 
-    if (selectedData.length === 0) {
-      alert('인쇄할 가입고 내역을 목록에서 최소 1건 이상 선택해 주세요.');
-      return;
-    }
+  if (selectedMasters.length === 0) {
+    alert('인쇄할 가입고 내역을 목록에서 최소 1건 이상 선택해 주세요.');
+    return;
+  }
 
-    setPrintData(selectedData);
+  setLoading(true); // 로딩 표시
 
+  try {
+    // 선택된 모든 가입고건에 대한 상세 품목 데이터를 비동기(Promise.all)로 병렬 조회
+    const formattedPrintData = await Promise.all(
+      selectedMasters.map(async (master: IpgoHistoryMaster) => {
+        try {
+          // 이미 가지고 있는 모달 데이터와 일치하면 모달 state 활용, 없으면 API 조회
+          if (isModalOpen && selectedIpgoNo === master.ipgoNumb && modalRowData.length > 0) {
+            return {
+              master: master,
+              items: modalRowData
+            };
+          }
+
+          // 상세 품목 API 호출 (/gaip/{ipgoNumb}/items)
+          const response = await ipgoApi.get(`/gaip/${master.ipgoNumb}/items`);
+          return {
+            master: master,
+            items: response.data || []
+          };
+        } catch (err) {
+          console.error(`가입고번호 [${master.ipgoNumb}] 상세 조회 실패:`, err);
+          return {
+            master: master,
+            items: []
+          };
+        }
+      })
+    );
+
+    // 상세 데이터가 채워진 객체 배열을 setPrintData에 전달
+    setPrintData(formattedPrintData);
+
+    // State 세팅 완료 후 인쇄 화면 호출
     setTimeout(() => {
       handlePrintTrigger();
-    }, 100);
-  };
+    }, 150);
 
-  // 날짜 계산 함수
+  } catch (error) {
+    console.error("인쇄 데이터 생성 중 오류 발생:", error);
+    alert("인쇄 데이터를 불러오는 도중 오류가 발생했습니다.");
+  } finally {
+    setLoading(false);
+  }
+};
+
+  // 날짜 계산 헬퍼 함수
   const getPastDate = (daysAgo: number) => {
     const d = new Date();
     d.setDate(d.getDate() - daysAgo);
     return d.toISOString().split('T')[0];
   };
 
+  // 검색 조건 상태
   const [startDate, setStartDate] = useState(getPastDate(30));
   const [endDate, setEndDate] = useState(getPastDate(0));
   const [searchText, setSearchText] = useState('');
   const [searchStatus, setSearchStatus] = useState('전체'); // '전체' | 'N' | 'Y'
 
+  // 모달 제어 상태
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedIpgoNo, setSelectedIpgoNo] = useState('');
 
@@ -100,7 +148,7 @@ export default function IpgoHistory({ custCode, custName }: IpgoHistoryProps) {
   const fetchMasterList = useCallback(async () => {
     setLoading(true);
     try {
-      // 1. 셀렉트 박스 상태값('진행중'|'종결'|'전체')을 백엔드 DB statType 코드값('N'|'Y'|'')으로 변환
+      // 1. 셀렉트 박스 상태값을 DB statType 코드값으로 변환
       let statTypeParam = '';
       if (searchStatus === '진행중' || searchStatus === 'N') statTypeParam = 'N';
       else if (searchStatus === '종결' || searchStatus === 'Y') statTypeParam = 'Y';
@@ -131,19 +179,19 @@ export default function IpgoHistory({ custCode, custName }: IpgoHistoryProps) {
 
   // API 연동: 모달 상세 품목 목록 조회
   const fetchDetailItems = async (gaip_numb: string) => {
-  setModalLoading(true);
-  try {
-    const response = await ipgoApi.get(`/gaip/${gaip_numb}/items`);
-    setModalRowData(response.data);
-  } catch (error) {
-    console.error("❌ 가입고 상세 품목 조회 실패:", error);
-    alert("가입고 상세 내역을 불러오는 중 오류가 발생했습니다.");
-  } finally {
-    setModalLoading(false);
-  }
-};
+    setModalLoading(true);
+    try {
+      const response = await ipgoApi.get(`/gaip/${gaip_numb}/items`);
+      setModalRowData(response.data);
+    } catch (error) {
+      console.error("❌ 가입고 상세 품목 조회 실패:", error);
+      alert("가입고 상세 내역을 불러오는 중 오류가 발생했습니다.");
+    } finally {
+      setModalLoading(false);
+    }
+  };
 
-  // 'itemSummary' (품목건수) 클릭 시 모달 팝업 열기
+  // 'itemSummary' (품목요약) 셀 클릭 시 상세 모달 열기
   const onCellClicked = (event: CellClickedEvent<IpgoHistoryMaster>) => {
     if (event.colDef?.field === 'itemSummary' && event.data) {
       const targetIpgoNo = event.data.ipgoNumb;
@@ -153,8 +201,7 @@ export default function IpgoHistory({ custCode, custName }: IpgoHistoryProps) {
     }
   };
 
-
-  // 메인 현황 그리드 컬럼 정의 (DB 쿼리 필드명과 일치)
+  // 메인 현황 그리드 컬럼 정의
   const [columnDefs] = useState<ColDef<IpgoHistoryMaster>[]>([
     { field: 'ordrNumb', headerName: '발주번호', width: 150, sortable: true, filter: true },
     {
@@ -185,7 +232,7 @@ export default function IpgoHistory({ custCode, custName }: IpgoHistoryProps) {
     },
   ]);
 
-  // 모달 그리드 컬럼 정의 (DB 쿼리 필드명과 일치)
+  // 모달 그리드 컬럼 정의
   const [modalColumnDefs] = useState<ColDef<IpgoHistoryDetail>[]>([
     { field: 'itemCode', headerName: '품번', width: 130 },
     { field: 'itemName', headerName: '품명', flex: 1, minWidth: 150 },
@@ -223,11 +270,19 @@ export default function IpgoHistory({ custCode, custName }: IpgoHistoryProps) {
         {/* 입고일 범위 */}
         <div className="date-filter-group" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#495057' }}>입고일</label>
-          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} 
-              style={{ height: '32px', border: '1px solid #ced4da', borderRadius: '4px', padding: '0 8px', fontSize: '13px' }} />
+          <input 
+            type="date" 
+            value={startDate} 
+            onChange={(e) => setStartDate(e.target.value)} 
+            style={{ height: '32px', border: '1px solid #ced4da', borderRadius: '4px', padding: '0 8px', fontSize: '13px' }} 
+          />
           <span style={{ fontSize: '13px', color: '#868e96' }}>~</span>
-          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} 
-              style={{ height: '32px', border: '1px solid #ced4da', borderRadius: '4px', padding: '0 8px', fontSize: '13px' }} />
+          <input 
+            type="date" 
+            value={endDate} 
+            onChange={(e) => setEndDate(e.target.value)} 
+            style={{ height: '32px', border: '1px solid #ced4da', borderRadius: '4px', padding: '0 8px', fontSize: '13px' }} 
+          />
         </div>
 
         {/* 통합 검색어 (발주번호, 가입고번호, 품목명) */}
@@ -246,7 +301,11 @@ export default function IpgoHistory({ custCode, custName }: IpgoHistoryProps) {
         {/* 진행상태 */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#495057' }}>진행상태</label>
-          <select value={searchStatus} onChange={(e) => setSearchStatus(e.target.value)} style={{ height: '32px', border: '1px solid #ced4da', borderRadius: '4px', padding: '0 8px', fontSize: '13px', backgroundColor: '#fff' }}>
+          <select 
+            value={searchStatus} 
+            onChange={(e) => setSearchStatus(e.target.value)} 
+            style={{ height: '32px', border: '1px solid #ced4da', borderRadius: '4px', padding: '0 8px', fontSize: '13px', backgroundColor: '#fff' }}
+          >
             <option value="전체">전체</option>
             <option value="N">진행중</option>
             <option value="Y">종결</option>
@@ -292,7 +351,7 @@ export default function IpgoHistory({ custCode, custName }: IpgoHistoryProps) {
       
       {/* 인쇄용 백그라운드 영역 */}
       <div style={{ display: 'none' }}>
-        <IpgoPrintSheet ref={printComponentRef} selectedData={printData} />
+        <IpgoPrintSheet ref={printComponentRef} selectedData={printData} custName={custName} />
       </div>
 
       {/* 상세 품목 목록 모달 팝업 */}

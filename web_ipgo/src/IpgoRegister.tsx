@@ -515,7 +515,7 @@ const handleSubmit = async (e: React.FormEvent) => {
     teleNumb: teleNumb,                       // 필요 시 추가
     storCode: "E010",                   // 기본 창고코드
     memoXxxx: "",                       // 비고
-    statType: "Y",
+    statType: "N",
     
     // 백엔드 DETL 저장용 품목 배열 (GaipgoDetailItem)
     items: validItems.map((item) => ({

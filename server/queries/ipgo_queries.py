@@ -90,7 +90,7 @@ SELECT_GAIP_HISTORY_DETL_ITEMS = """
              , B.gaip_qnty
              , B.stat_type AS statType
              , C.item_name
-             , C.qnty_code AS unit
+             , ISNULL(C.name,C.qnty_code) AS unit
              , D.ordr_qnty
              , D.mi_qnty
              , D.ordr_numb AS ordrDetl
@@ -100,8 +100,13 @@ SELECT_GAIP_HISTORY_DETL_ITEMS = """
                 FROM mt_gaip_detl
         ) AS B ON A.ipgo_numb = B.ipgo_numb
         LEFT JOIN (
-                SELECT item_code, item_name, qnty_code
-                FROM be_item_info
+                SELECT item_code, item_name, qnty_code, name
+                FROM be_item_info AS A
+                LEFT JOIN (
+                                SELECT code, name
+                                FROM SYS_CODE_INFO
+                                WHERE GRUP_CODE = 'QNTY_CODE'
+                ) AS B ON A.qnty_code = B.code
                 WHERE item_gubn LIKE '2%'
         ) AS C ON B.item_code = C.item_code
         LEFT JOIN (
@@ -140,7 +145,8 @@ EXEC_SP_GAIP_INFO_INSERT = """
         @v_ITEM_CODE = ?,
         @v_ORDR_DETL = ?,
         @v_GAIP_QNTY = ?,
-        @v_STAT_TYPE = ?;
+        @v_STAT_TYPE = ?,
+        @v_USER_IPPP = ?;
 
     SELECT @out_IPGO_NUMB AS IPGO_NUMB;
 """
@@ -201,7 +207,7 @@ SELECT_ORDR_DETL_ITEMS = """
 			, E.ipgo_qnty AS apgo_qnty
                         , E.mi_qnty
 			, F.prev_qnty
-                        , C.name AS unit
+                        , ISNULL(C.name, C.qnty_code) AS unit
                         , E.ordr_numb AS ordrDetl
         FROM mt_ordr_mast AS A
         LEFT JOIN (
@@ -230,16 +236,16 @@ SELECT_ORDR_DETL_ITEMS = """
         ) AS DD ON D.ipgo_numb = DD.ipgo_numb
 
         LEFT JOIN (
-                        select	A.ordr_numb, A.item_code, A.ordr_qnty, B.ipgo_qnty,
-                                        A.ordr_qnty - B.ipgo_qnty AS mi_qnty
+                        select	A.ordr_numb, A.item_code, A.ordr_qnty, ISNULL(B.ipgo_qnty,0) As ipgo_qnty,
+                                A.ordr_qnty - ISNULL(B.ipgo_qnty,0) AS mi_qnty
                         from 
                                 (
-                                        select	ordr_numb + sqen_numb AS ordr_numb, item_code, sum(isnull(item_qnty, 0)) as ordr_qnty
+                                        select	ordr_numb + sqen_numb AS ordr_numb, item_code, SUM(ISNULL(item_qnty, 0)) as ordr_qnty
                                         from mt_ordr_detl
                                         group by ordr_numb + sqen_numb, item_code
                                 ) as A
                                 left join (
-                                                select ordr_numb, item_code, sum(isnull(item_qnty, 0)) as ipgo_qnty 
+                                                select ordr_numb, item_code, SUM(ISNULL(item_qnty, 0)) as ipgo_qnty 
                                                 from mt_ipgo_detl
                                                 group by ordr_numb, item_code
                                 ) as B on A.ordr_numb = B.ordr_numb and A.item_code = B.item_code

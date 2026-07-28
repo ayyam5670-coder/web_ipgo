@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Request
 from pydantic import BaseModel
 import os
 import pyodbc
@@ -337,9 +337,21 @@ class GaipgoCreateRequest(BaseModel):
 # 가입고 등록 API
 # ----------------------------------------
 @ipgo_router.post("/create")
-def create_gaipgo_info(payload: GaipgoCreateRequest):
+def create_gaipgo_info(payload: GaipgoCreateRequest, request: Request):
     if not payload.items:
         raise HTTPException(status_code=400, detail="등록할 품목 목록이 없습니다.")
+
+    client_ip = request.headers.get("x-forwarded-for")
+
+    # 접속자 IP 추적
+    if client_ip:
+        client_ip = client_ip.split(",")[0].strip()
+    else:
+        # 2. request.client가 None이 아닐 때만 host에 접근
+        if request.client and hasattr(request.client, "host"):
+            client_ip = request.client.host
+        else:
+            client_ip = "127.0.0.1"  # 감지 실패 시 기본 IP (또는 빈값 "")
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -366,7 +378,8 @@ def create_gaipgo_info(payload: GaipgoCreateRequest):
                 item.itemCode,                      # @v_ITEM_CODE
                 item.ordrDetl,                      # @v_ORDR_DETL (조회 결과의 ordrDetl)
                 item.gaipQnty,                      # @v_GAIP_QNTY
-                payload.statType or "Y"             # @v_STAT_TYPE
+                payload.statType or "Y",             # @v_STAT_TYPE
+                client_ip
             )
 
             # ipgo_queries.py 상수의 SQL 실행
