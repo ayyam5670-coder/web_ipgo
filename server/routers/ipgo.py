@@ -199,13 +199,12 @@ def get_ordr_detail_items(cust_code: str, ordr_numb: str):
                 "atskCode": row[4],
                 "itemName": row[5],
                 "itemGrup": row[6],
-                # "itemQnty": row[6],  # 입고 수량
-                "ordrQnty": row[7],  # 발주 수량
-                "apgoQnty": row[8],  # 총입고 수량
-                "miQnty": row[9],      # 미입고 수량
-                "prevQnty": row[10],  # 이전 가입고 수량
-                "unit": row[11],       # 단위
-                "ordrDetl": row[12],   # ordr_numb
+                "ordrQnty": row[7],     # 발주수량
+                "apgoQnty": row[8],     # 총입고수량
+                "miQnty": row[9],       # 미입고수량
+                "summGaip": row[10],    # 누적 가입고수량
+                "unit": row[11],        # 단위
+                "ordrDetl": row[12],    # ordr_numb
             })
         return detail_items
         
@@ -300,6 +299,7 @@ def get_gaip_history_detail_items(cust_code: str, gaip_numb: str):
                 "ordrQnty": row[7],   # D.ordr_qnty (발주 수량)
                 "miQnty": row[8],     # D.mi_qnty (미입고 수량 / 필요 수량)
                 "ordrDetl": row[9],   # ordr_numb
+                "summGaip": row[10],    # 누적가입고수량
             })
         return detail_items
         

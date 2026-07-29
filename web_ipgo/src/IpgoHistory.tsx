@@ -40,11 +40,12 @@ interface IpgoHistoryDetail {
   itemCode: string;   // 품번
   itemName: string;   // 품명
   ordrQnty: number;   // 발주수량
-  miQnty: number;     // 미입고/필요수량
-  gaipQnty: number;   // 금회/가입고 수량
+  miQnty: number;     // 필요입고수량
+  gaipQnty: number;   // 가입고수량
   unit: string;       // 단위
   statType: 'Y' | 'N';
   ordrDetl: string;   // ordr_numb
+  summQnty: number;   // 누적가입고수량
 }
 
 export default function IpgoHistory({ custCode, custName }: IpgoHistoryProps) {
@@ -238,7 +239,8 @@ const handlePrintHistory = async () => {
     { field: 'itemName', headerName: '품명', flex: 1, minWidth: 150 },
     { field: 'ordrQnty', headerName: '발주수량', width: 90, cellStyle: { textAlign: 'right' } },
     { field: 'miQnty', headerName: '필요 입고수량', width: 110, cellStyle: { textAlign: 'right', color: '#ff6b6b', fontWeight: 'bold' } },
-    { field: 'gaipQnty', headerName: '금회 납품수량', width: 110, cellStyle: { textAlign: 'right', fontWeight: 'bold' } },
+    { field: 'gaipQnty', headerName: '가입고수량', width: 100, cellStyle: { textAlign: 'right', fontWeight: 'bold' } },
+    { field: 'summGaip', headerName: '누적 가입고수량', width: 120, cellStyle: { textAlign: 'right', fontWeight: 'bold' } },
     { field: 'unit', headerName: '단위', width: 60, cellStyle: { textAlign: 'center' } },
     {
       field: 'statType',
@@ -357,7 +359,7 @@ const handlePrintHistory = async () => {
       {/* 상세 품목 목록 모달 팝업 */}
       {isModalOpen && (
         <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
-          <div className="modal-body" style={{ maxWidth: '850px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
+          <div className="modal-body" style={{ maxWidth: '900px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>가입고 상세 품목 명세 [{selectedIpgoNo}]</h3>
               <button type="button" className="btn-close" onClick={() => setIsModalOpen(false)}>✕</button>

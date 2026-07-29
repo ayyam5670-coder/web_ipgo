@@ -94,6 +94,7 @@ SELECT_GAIP_HISTORY_DETL_ITEMS = """
              , D.ordr_qnty
              , D.mi_qnty
              , D.ordr_numb AS ordrDetl
+             , E.summ_gaip
         FROM mt_gaip_mast AS A
         LEFT JOIN (
                 SELECT ipgo_numb, sqen_numb, ordr_numb, item_code, gaip_qnty, stat_type
@@ -123,6 +124,14 @@ SELECT_GAIP_HISTORY_DETL_ITEMS = """
                         GROUP BY ordr_numb, item_code
                 ) AS B ON A.ordr_numb = B.ordr_numb AND A.item_code = B.item_code
         ) AS D ON B.ordr_numb = D.ordr_numb
+        LEFT JOIN (
+                        SELECT ordr_numb,
+                                item_code,
+                                SUM(ISNULL(gaip_qnty,0)) AS summ_gaip
+                        FROM mt_gaip_detl
+                        WHERE stat_type = 'N'
+                        GROUP BY ordr_numb, item_code
+        ) AS E ON B.ordr_numb = E.ordr_numb AND B.item_code = E.item_code
 
         WHERE A.cust_code = ?
           AND A.ipgo_numb LIKE ?
@@ -206,7 +215,7 @@ SELECT_ORDR_DETL_ITEMS = """
                         , E.ordr_qnty
 			, E.ipgo_qnty AS apgo_qnty
                         , E.mi_qnty
-			, F.prev_qnty
+			, F.summ_gaip
                         , ISNULL(C.name, C.qnty_code) AS unit
                         , E.ordr_numb AS ordrDetl
         FROM mt_ordr_mast AS A
@@ -250,26 +259,14 @@ SELECT_ORDR_DETL_ITEMS = """
                                                 group by ordr_numb, item_code
                                 ) as B on A.ordr_numb = B.ordr_numb and A.item_code = B.item_code
         ) AS E ON A.ordr_numb + B.sqen_numb = E.ordr_numb
-        LEFT JOIN ( 
-                        SELECT ordr_numb
-                                , prev_qnty
-                        FROM
-                        (
-                                SELECT A.ipgo_numb
-                                        , B.ordr_numb
-                                        , B.gaip_qnty AS prev_qnty
-                                        , ROW_NUMBER() OVER (
-                                                                PARTITION BY B.ordr_numb 
-                                                                ORDER BY A.ipgo_date DESC, A.ipgo_numb DESC
-                                                        ) AS rn
-                                FROM mt_gaip_mast AS A
-                                LEFT JOIN (
-                                                SELECT ipgo_numb, ordr_numb, gaip_qnty
-                                                FROM mt_gaip_detl
-                                ) AS B ON A.ipgo_numb = B.ipgo_numb
-                        ) AS P
-                        WHERE P.rn = 1                     
-        ) AS F ON A.ordr_numb + B.sqen_numb = F.ordr_numb
+        LEFT JOIN (
+                        SELECT ordr_numb,
+                                item_code,
+                                SUM(ISNULL(gaip_qnty,0)) AS summ_gaip
+                        FROM mt_gaip_detl
+                        WHERE stat_type = 'N'
+                        GROUP BY ordr_numb, item_code
+        ) AS F ON A.ordr_numb + B.sqen_numb = F.ordr_numb AND B.item_code = F.item_code
 
         WHERE A.cust_code = ?
           AND A.ordr_numb LIKE ?

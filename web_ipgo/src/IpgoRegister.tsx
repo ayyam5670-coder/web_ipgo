@@ -35,7 +35,7 @@ interface BomItem {
   atskCode: string;
   itemName: string;
   ordrQnty: number;
-  prevQnty: number;
+  summGaip: number;
   apgoQnty: number;
   needQnty: number; 
   ipgoQnty: number;
@@ -47,23 +47,23 @@ interface BomItem {
 let html5QrScanner: any = null;
 
 interface DbItem {
-  itemGrup: string;  // 원자재/부자재
-  itemGubn: string;  // 품목구분
-  itemGubnName: string;  // 품목구분
-  itemCode: string;   // 품목코드
-  atskCode: string;  // 품번
-  itemName: string;   // 품명
-  unit: string;       // 단위
+  itemGrup: string;     // 원자재/부자재
+  itemGubn: string;     // 품목구분
+  itemGubnName: string; // 품목구분
+  itemCode: string;     // 품목코드
+  atskCode: string;     // 품번
+  itemName: string;     // 품명
+  unit: string;         // 단위
   ordrNumb: string;
   ordrDate: string;
-  itemQnty: number;  // 입고 수량
-  ordrQnty: number;  // 발주 수량
-  apgoQnty: number;  // 총 입고 수량
-  miQnty: number;  // 미입고 수량
-  deryDate: string;  // 납기일
-  statType: string; // 발주종결여부
-  prevGaip: number;  // 이전 가입고 수량
-  ordrDetl: string;  // ordr_numb
+  itemQnty: number;     // 입고수량
+  ordrQnty: number;     // 발주수량
+  apgoQnty: number;     // 총 입고수량
+  miQnty: number;       // 미입고수량
+  deryDate: string;     // 납기일
+  statType: string;     // 발주종결여부
+  summGaip: number;     // 누적 가입고수량
+  ordrDetl: string;     // ordr_numb
   userName: string;
   teleNumb: string;
 }
@@ -224,8 +224,8 @@ useEffect(() => {
           // 계산식 결과 반영
           needQnty: needQnty,  // 필요 입고수량 (계산된 값)
           
-          ipgoQnty: 10,                 // 금회 납품수량 (기본값 10, 사용자가 입력함)
-          prevQnty: item.prevQnty || 0, // 이전 가입고 수량
+          ipgoQnty: 10,                 // 금회 납품수량 (기본값 10, 사용자 입력)
+          summGaip: item.summGaip || 0, // 누적 가입고 수량
           unit: item.unit || 'EA',
           ordrDetl: item.ordrDetl,
           //,statType: item.statType
@@ -331,8 +331,8 @@ useEffect(() => {
         cellStyle: { textAlign: 'right', backgroundColor: '#e8f0f7', fontWeight: 'bold' } 
       },
       { 
-        field: 'prevQnty', 
-        headerName: isMobile ? '이전' : '이전가입고수량', 
+        field: 'summGaip', 
+        headerName: isMobile ? '누적' : '누적가입고수량', 
         width: isMobile ? 75 : 110,
         flex: isMobile ? 0 : undefined,
         suppressSizeToFit: true,
@@ -369,7 +369,7 @@ useEffect(() => {
       apgoQnty: 0,
       needQnty: 0,
       ipgoQnty: 10,
-      prevQnty: 0,
+      summGaip: 0,
       unit: item.unit || '',
       ordrDetl: item.ordrDetl
     };
