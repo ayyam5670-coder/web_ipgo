@@ -137,6 +137,16 @@ SELECT_GAIP_HISTORY_DETL_ITEMS = """
           AND A.ipgo_numb LIKE ?
 """
 
+# 가입고 내역 메뉴 화면 수정 쿼리
+UPDATE_GAIP_DETL_ITEM = """
+        UPDATE mt_gaip_detl
+        SET     gaip_qnty = ?,
+                stat_type = ?
+        WHERE ipgo_numb = ?
+        AND item_code = ?
+"""
+
+
 
 # 가입고 정보 저장 프로시저 실행 쿼리
 EXEC_SP_GAIP_INFO_INSERT = """

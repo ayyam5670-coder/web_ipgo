@@ -310,6 +310,65 @@ def get_gaip_history_detail_items(cust_code: str, gaip_numb: str):
         conn.close()
 
 
+# ----------------------------------------
+# 가입고 상세 수정 요청 모델
+# ----------------------------------------
+class GaipDetailUpdateItem(BaseModel):
+    itemCode: str
+    gaipQnty: float
+    statType: str  # '진행'('N') 또는 '종결'('Y') 등 프론트엔드에서 전달되는 값
+
+class GaipDetailUpdateRequest(BaseModel):
+    items: List[GaipDetailUpdateItem]
+
+
+# ----------------------------------------------------
+# 가입고 상세 품목 수정 (수량 및 상태 변경) API
+# ----------------------------------------------------
+@ipgo_router.put("/gaip/{gaip_numb}/items")
+def update_gaip_history_detail_items(
+    gaip_numb: str, 
+    payload: GaipDetailUpdateRequest,
+    cust_code: Optional[str] = None
+):
+    if not payload.items:
+        raise HTTPException(status_code=400, detail="수정할 품목 데이터가 없습니다.")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    updated_count = 0
+
+    try:
+        # Pydantic items 리스트를 순회하며 개별 UPDATE 실행
+        for item in payload.items:
+            cursor.execute(
+                ipgo_queries.UPDATE_GAIP_DETL_ITEM,
+                (
+                    item.gaipQnty,
+                    item.statType,
+                    gaip_numb.strip(),
+                    item.itemCode.strip()
+                )
+            )
+            updated_count += cursor.rowcount
+
+        # 모든 품목 업데이트 완료 후 커밋
+        conn.commit()
+
+        return {
+            "success": True,
+            "message": f"총 {updated_count}건의 가입고 내역이 수정되었습니다.",
+            "updatedCount": updated_count
+        }
+
+    except Exception as e:
+        conn.rollback()  # 예외 발생 시 트랜잭션 롤백
+        print(f"❌ 가입고 상세 품목 수정 에러: {e}")
+        raise HTTPException(status_code=500, detail="가입고 내역 수정 처리 중 오류가 발생했습니다.")
+    finally:
+        conn.close()
+
+
 
 # ----------------------------------------
 # 가입고 등록 라우터 = 프로시저 연결
