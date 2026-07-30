@@ -50,6 +50,7 @@ SELECT_GAIP_HISTOTY_MAIN_LIST = """
                 ELSE ISNULL(C.item_name, B.first_item_code)
                 END                                              AS itemSummary
                 , B.calculated_stat_type                         AS statType
+                , D.ordr_stat
         FROM mt_gaip_mast AS A
         LEFT JOIN (
                         SELECT ipgo_numb
@@ -75,6 +76,12 @@ SELECT_GAIP_HISTOTY_MAIN_LIST = """
                         GROUP BY ipgo_numb, B.ordr_numb
         ) AS B ON A.ipgo_numb = B.ipgo_numb
         LEFT JOIN be_item_info AS C ON RTRIM(LTRIM(B.first_item_code)) = RTRIM(LTRIM(C.item_code))
+        LEFT JOIN (
+                        SELECT ordr_numb, CASE WHEN SUM(CASE WHEN stat_type = 'N' THEN 1 ELSE 0 END) > 0 
+                                                THEN 'N' ELSE 'Y' END                   AS ORDR_STAT
+                        FROM mt_ordr_detl
+                        GROUP BY ordr_numb
+        )AS  D ON B.ordr_numb = D.ordr_numb
         WHERE   A.cust_code = ?
                 AND (A.ipgo_date BETWEEN ? AND ?)
                 AND B.calculated_stat_type LIKE ?

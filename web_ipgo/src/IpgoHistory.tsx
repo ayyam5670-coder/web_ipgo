@@ -31,6 +31,7 @@ interface IpgoHistoryMaster {
   lastDate: string;    // 최근입고일
   itemSummary: string; // 품목 요약
   statType: 'Y' | 'N'; // 'N': 진행중, 'Y': 종결
+  ordrStat: 'Y' | 'N'; // 'N': 진행중, 'Y': 종결
 }
 
 // 2. 모달 상세 목록 API 응답 구조
@@ -274,6 +275,16 @@ export default function IpgoHistory({ custCode, custName }: IpgoHistoryProps) {
     {
       field: 'statType',
       headerName: '진행상태',
+      width: 110,
+      valueGetter: (params) => (params.data?.statType === 'N' ? '진행중' : '종결'),
+      cellStyle: (params) => {
+        if (params.value === '종결') return { color: '#888', fontWeight: 'bold', textAlign: 'center' };
+        return { color: '#2e7d32', fontWeight: 'bold', textAlign: 'center' };
+      },
+    },
+    {
+      field: 'ordrStat',
+      headerName: '발주진행상태',
       width: 110,
       valueGetter: (params) => (params.data?.statType === 'N' ? '진행중' : '종결'),
       cellStyle: (params) => {

@@ -258,6 +258,7 @@ def get_gaip_history_masters(
                 "lastDate": row[4],     # AS lastDate (최근입고일)
                 "itemSummary": row[5],  # AS itemSummary (품목 요약)
                 "statType": row[6],     # AS statType ('N' | 'Y')
+                "ordrStat": row[7],     # 발주 진행상태
             })
 
         return gaip_histories
