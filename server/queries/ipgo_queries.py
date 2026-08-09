@@ -330,10 +330,10 @@ SELECT_ORDR_MENU_MAIN_LIST = """
 
 # PWDCOMPARE를 활용한 유저 검증 쿼리
 MATCHED_USER_LOGIN = """
-SELECT 
-        user_code AS custCode,
-        user_name AS custName,
-        PWDCOMPARE(?, USER_PASS) AS is_matched
-FROM be_user_info
-WHERE USER_CODE = ?
+        SELECT 
+                user_code AS custCode,
+                user_name AS custName,
+                PWDCOMPARE(?, USER_PASS) AS is_matched
+        FROM be_user_info
+        WHERE UPPER(USER_CODE) = UPPER(?)
 """

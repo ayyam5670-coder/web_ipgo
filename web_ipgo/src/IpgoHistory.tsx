@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import type { ColDef, CellClickedEvent } from 'ag-grid-community';
 import { ModuleRegistry, AllCommunityModule, themeAlpine } from 'ag-grid-community';
@@ -51,7 +51,7 @@ interface IpgoHistoryDetail {
 
 export default function IpgoHistory({ custCode, custName }: IpgoHistoryProps) {
   const mainGridRef = useRef<AgGridReact>(null);
-  const modalGridRef = useRef<AgGridReact>(null); // 모달 그리드 저장용 Ref 추가
+  const modalGridRef = useRef<AgGridReact>(null); // 모달 그리드 저장용 Ref
   const printComponentRef = useRef<HTMLDivElement>(null);
 
   // 로딩 및 데이터 상태 관리
@@ -60,6 +60,9 @@ export default function IpgoHistory({ custCode, custName }: IpgoHistoryProps) {
   const [saveLoading, setSaveLoading] = useState(false);
   const [masterRowData, setMasterRowData] = useState<IpgoHistoryMaster[]>([]);
   const [modalRowData, setModalRowData] = useState<IpgoHistoryDetail[]>([]);
+
+  // 모달 상단 셀렉트박스용 상태값 ('ALL' | 'N' | 'Y')
+  const [modalStatusFilter, setModalStatusFilter] = useState<string>('ALL');
 
   // 인쇄 데이터 관리
   const [printData, setPrintData] = useState<any[]>([]);
@@ -120,6 +123,7 @@ export default function IpgoHistory({ custCode, custName }: IpgoHistoryProps) {
   // 모달 상세 품목 목록 조회
   const fetchDetailItems = async (gaip_numb: string) => {
     setModalLoading(true);
+    setModalStatusFilter('ALL'); // 모달이 열릴 때 필터를 '전체'로 초기화
     try {
       const response = await ipgoApi.get(`/gaip/${gaip_numb}/items`);
       setModalRowData(response.data);
@@ -130,6 +134,12 @@ export default function IpgoHistory({ custCode, custName }: IpgoHistoryProps) {
       setModalLoading(false);
     }
   };
+
+  // 모달 상태 필터링된 데이터
+  const filteredModalRowData = useMemo(() => {
+    if (modalStatusFilter === 'ALL') return modalRowData;
+    return modalRowData.filter((item) => item.statType === modalStatusFilter);
+  }, [modalRowData, modalStatusFilter]);
 
   // '품목요약' 클릭 시 (단순 조회 모달)
   const onCellClicked = (event: CellClickedEvent<IpgoHistoryMaster>) => {
@@ -167,6 +177,29 @@ export default function IpgoHistory({ custCode, custName }: IpgoHistoryProps) {
     fetchDetailItems(targetMaster.ipgoNumb);
   };
 
+
+  // 모달 내 선택된 항목들의 진행상태 일괄 변경 핸들러
+  const handleBulkStatusChange = (newStatus: 'N' | 'Y') => {
+    if (!modalGridRef.current?.api) return;
+
+    const selectedNodes = modalGridRef.current.api.getSelectedNodes();
+    if (selectedNodes.length === 0) {
+      alert('상태를 변경할 항목을 선택해 주세요.');
+      return;
+    }
+
+    const statusText = newStatus === 'N' ? '진행중' : '종결';
+    if (!confirm(`선택한 ${selectedNodes.length}개 항목의 상태를 [${statusText}](으)로 변경하시겠습니까?`)) {
+      return;
+    }
+
+    // 선택된 노드들의 statType 값을 일괄 변경 (화면 그리드 즉시 반영)
+    selectedNodes.forEach((node) => {
+      node.setDataValue('statType', newStatus);
+    });
+  };
+
+
   // 수정 모달창의 저장버튼 이벤트
   const handleSaveDetail = async () => {
     if (!modalGridRef.current?.api) return;
@@ -191,7 +224,6 @@ export default function IpgoHistory({ custCode, custName }: IpgoHistoryProps) {
 
     setSaveLoading(true);
     try {
-      // 서버 저장 API 호출 (프로젝트 백엔드 엔드포인트에 맞게 URL/Data 구조 조정)
       await ipgoApi.put(`/gaip/${selectedIpgoNumb}/items`, {
         ipgoNumb: selectedIpgoNumb,
         items: updatedItems,
@@ -208,9 +240,6 @@ export default function IpgoHistory({ custCode, custName }: IpgoHistoryProps) {
     }
   };
 
-
-
-  
   // 선택된 항목 인쇄 핸들러
   const handlePrintHistory = async () => {
     const selectedNodes = mainGridRef.current?.api?.getSelectedNodes();
@@ -294,7 +323,7 @@ export default function IpgoHistory({ custCode, custName }: IpgoHistoryProps) {
     },
   ]);
 
-  // 모달 그리드 컬럼 정의 (수정 모드일 때 가입고수량, 진행상태 셀 수정 허용)
+  // 모달 그리드 컬럼 정의 (자체 AG Grid 필터 속성 제거됨)
   const modalColumnDefs: ColDef<IpgoHistoryDetail>[] = [
     { field: 'itemCode', headerName: '품번', width: 130 },
     { field: 'itemName', headerName: '품명', flex: 1, minWidth: 150 },
@@ -317,7 +346,7 @@ export default function IpgoHistory({ custCode, custName }: IpgoHistoryProps) {
     {
       field: 'statType',
       headerName: '상태',
-      width: 95,
+      width: 90,
       editable: isEditMode, // 수정 모드일 때 선택 변경 가능
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: {
@@ -448,7 +477,7 @@ export default function IpgoHistory({ custCode, custName }: IpgoHistoryProps) {
       {/* 상세 품목 목록 & 수정 모달 팝업 */}
       {isModalOpen && (
         <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
-          <div className="modal-body" style={{ maxWidth: '920px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
+          <div className="modal-body" style={{ maxWidth: '960px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0 }}>
                 가입고 상세 품목 명세 [{selectedIpgoNumb}] {isEditMode && <span style={{ color: '#e67700', fontSize: '14px' }}>(수정 모드)</span>}
@@ -457,23 +486,69 @@ export default function IpgoHistory({ custCode, custName }: IpgoHistoryProps) {
             </div>
             
             <div className="modal-content-area" style={{ padding: '15px' }}>
-              {isEditMode && (
-                <div style={{ fontSize: '12px', color: '#d9480f', marginBottom: '8px', backgroundColor: '#fff9db', padding: '6px 10px', borderRadius: '4px' }}>
-                  * 노란색 배경의 <b>가입고수량</b> 및 <b>상태</b> 셀을 직접 클릭하여 수정할 수 있습니다.
+              {/* 모달 상단 컨트롤 바 */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                <div>
+                  {isEditMode && (
+                    <span style={{ fontSize: '12px', color: '#d9480f', backgroundColor: '#fff9db', padding: '4px 8px', borderRadius: '4px' }}>
+                      * 체크박스 선택 후 일괄 변경하거나, 셀을 직접 클릭하여 수정할 수 있습니다.
+                    </span>
+                  )}
                 </div>
-              )}
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  {/* 수정 모드일 때만 일괄 변경 버튼 노출 */}
+                  {isEditMode && (
+                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center', backgroundColor: '#f1f3f5', padding: '2px 6px', borderRadius: '4px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#495057' }}>선택항목:</span>
+                      <button
+                        type="button"
+                        onClick={() => handleBulkStatusChange('N')}
+                        style={{ height: '24px', padding: '0 8px', fontSize: '11px', backgroundColor: '#2b8a3e', color: '#fff', border: 'none', borderRadius: '3px', cursor: 'pointer', fontWeight: 'bold' }}
+                      >
+                        진행중
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleBulkStatusChange('Y')}
+                        style={{ height: '24px', padding: '0 8px', fontSize: '11px', backgroundColor: '#495057', color: '#fff', border: 'none', borderRadius: '3px', cursor: 'pointer', fontWeight: 'bold' }}
+                      >
+                        종결
+                      </button>
+                    </div>
+                  )}
+
+                  {/* 진행상태 셀렉트박스 */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#495057' }}>조회구분</label>
+                    <select
+                      value={modalStatusFilter}
+                      onChange={(e) => setModalStatusFilter(e.target.value)}
+                      style={{ height: '28px', border: '1px solid #ced4da', borderRadius: '4px', padding: '0 8px', fontSize: '12px', backgroundColor: '#fff' }}
+                    >
+                      <option value="ALL">전체</option>
+                      <option value="N">진행중</option>
+                      <option value="Y">종결</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* 모달 AG Grid 영역 */}
               <div style={{ height: '350px', width: '100%' }}>
                 <AgGridReact
                   ref={modalGridRef}
-                  rowData={modalRowData}
+                  rowData={filteredModalRowData}
                   columnDefs={modalColumnDefs}
                   theme={themeAlpine}
                   loading={modalLoading}
-                  singleClickEdit={true} // 수정 모드일 때 클릭 한 번에 수정 실행
+                  singleClickEdit={true}
+                  // ★ 모달 그리드에 멀티 체크박스(헤더 전체선택 포함) 추가
+                  rowSelection={{ mode: 'multiRow', headerCheckbox: true }}
                 />
               </div>
 
-              {/* 모달 하단 버튼 영역 */}
+              {/* 모달 하단 저장/닫기 버튼 */}
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '15px' }}>
                 {isEditMode && (
                   <button
