@@ -36,14 +36,14 @@ export default function Sidebar({
           className={`menu-item ${activePage === 'history' ? 'active' : ''}`} 
           onClick={() => { setActivePage('history'); setIsSidebarOpen(false); }}
         >
-          <span style={{ marginRight: '10px' }}>📋</span>가입고 등록 내역
+          <span style={{ marginRight: '10px' }}>📋</span>가입고 등록 현황
         </div>
 
         <div 
           className={`menu-item ${activePage === 'orderHistory' ? 'active' : ''}`} 
           onClick={() => { setActivePage('orderHistory'); setIsSidebarOpen(false); }}
         >
-          <span style={{ marginRight: '10px' }}>📊</span>발주 내역
+          <span style={{ marginRight: '10px' }}>📊</span>발주 현황
         </div>
       </div>
       

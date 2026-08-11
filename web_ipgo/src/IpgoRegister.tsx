@@ -41,6 +41,8 @@ interface BomItem {
   ipgoQnty: number;
   unit: string;
   ordrDetl: string;
+  gaipYmmm: string; // 기준월 (YYYYMM)
+  memoXxxx?: string;
 }
 
 // 전역 변수로 html5QrScanner를 선언하여 스캐너 인스턴스를 관리
@@ -66,6 +68,7 @@ interface DbItem {
   ordrDetl: string;     // ordr_numb
   userName: string;
   teleNumb: string;
+  gaipYmmm: string;     // 가입고 년월
 }
 
 interface gubnCode {
@@ -124,6 +127,30 @@ export default function IpgoRegister({ setActivePage, custCode, custName }: Ipgo
   const [ordrStartDate, setOrdrStartDate] = useState(getPastDate(7));
   const [ordrEndDate, setOrdrEndDate] = useState(getPastDate(0));
   const [ordrSearchText, setOrdrSearchText] = useState('');
+
+  // 현재 날짜 기준으로 앞뒤 offset개월의 YYYYMM 배열 생성 함수
+const getMonthOptions = (before = 5, after = 5) => {
+  const options: string[] = [];
+  const today = new Date();
+
+  for (let i = -before; i <= after; i++) {
+    const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    options.push(`${yyyy}${mm}`);
+  }
+
+  return options; // 예: ['202603', '202604', ..., '202608'(현재), ..., '202612', '202701']
+};
+
+// 현재월 YYYYMM 구하기
+const getCurrentYYYYMM = () => {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `${yyyy}${mm}`; // "202608"
+};
+
 /* =============================================================== useEffect start =============================================================== */
 // 발주서 모달날짜(시작일, 종료일)가 변경되면 자동으로 조회
 useEffect(() => {
@@ -201,12 +228,15 @@ useEffect(() => {
       // 화면 상단 인풋박스에 발주번호
       setSelectedOrdrNo(ordrNumb);
 
+      // 현재월 기본값 구하기 ("202608")
+      const currentYymm = getCurrentYYYYMM();
+
       // 수량 계산식을 거쳐서 그리드용 데이터(BomItem 구조)로 재조립하기
       const calculatedRows = rawItems.map((item: any) => {
         
         // 변수 선언 (백엔드에서 넘어온 값들)
         const ordrQnty = item.ordrQnty || 0; // 발주수량
-        const apgoQnty = item.apgoQnty || 0;   // 실제 총입고수량
+        const apgoQnty = item.apgoQnty || 0; // 실제 총입고수량
         
         // 필요 입고수량 = 발주수량 - 실제 총입고수량
         const needQnty = ordrQnty - apgoQnty; 
@@ -218,29 +248,30 @@ useEffect(() => {
           itemCode: item.itemCode,     // 품목코드
           atskCode: item.atskCode,     // 품번
           itemName: item.itemName,     // 품명
-          ordrQnty: ordrQnty,        // 발주수량
+          ordrQnty: ordrQnty,          // 발주수량
           apgoQnty: apgoQnty,          // 실제 총입고수량
           
           // 계산식 결과 반영
-          needQnty: needQnty,  // 필요 입고수량 (계산된 값)
+          needQnty: needQnty,          // 필요 입고수량 (계산된 값)
           
           ipgoQnty: 10,                 // 금회 납품수량 (기본값 10, 사용자 입력)
           summGaip: item.summGaip || 0, // 누적 가입고 수량
+          // 기준월 (서버에 저장된 값이 있으면 사용, 없으면 현재월 기본값)
+          gaipYmmm: item.gaipYmmm || currentYymm,
           unit: item.unit || 'EA',
           ordrDetl: item.ordrDetl,
-          //,statType: item.statType
+          // statType: item.statType
         };
       });
 
-      // 최종 계산된 리스트
+      // 그리드 State 반영
       setRowData(calculatedRows);
-      
-      // 모달창 닫기
+
       setIsOrdrModalOpen(false);
 
     } catch (error) {
-      console.error("발주 상세 내역 바인딩 실패:", error);
-      alert("상세 내역을 계산하는 중 오류가 발생했습니다.");
+      console.error('발주 상세 품목 조회 실패:', error);
+      alert('상세 품목 정보를 불러오는 도중 오류가 발생했습니다.');
     }
   };
   /* ========================= 발주서 모달 관련 상태 및 함수 end ========================== */
@@ -302,6 +333,8 @@ useEffect(() => {
 
   /* ========================== 품목 추가 모달 관련 상태 및 함수 end ========================== */
 
+  // 선택 가능한 월 목록 생성 (앞 5개월 ~ 뒤 5개월)
+  const monthOptions = useMemo(() => getMonthOptions(5, 5), []);
 
   /* ==================================== 그리드 컬럼 정의 및 기본 옵션 START ==================================== */
   const columnDefs = useMemo<ColDef[]>(
@@ -310,8 +343,28 @@ useEffect(() => {
       { field: 'itemCode', headerName: '코드', width: 110, sortable: true, filter: true, hide: isMobile },
       { field: 'atskCode', headerName: '품번', width: 110, sortable: true, filter: true, hide: isMobile },
       { field: 'itemName', headerName: '품명', flex: 2, minWidth: 120, sortable: true, filter: true },
-      { field: 'ordrQnty', headerName: '발주수량', width: 90, cellStyle: { textAlign: 'right' }, hide: isMobile  },
-      { field: 'apgoQnty', headerName: '총입고수량', width: 100, cellStyle: { textAlign: 'right' }, hide: isMobile  },
+      
+      // ---------------- [신규 추가: 가입고월 (gaipYmmm)] ----------------
+      {
+        field: 'gaipYmmm',
+        headerName: '기준월',
+        width: isMobile ? 85 : 100,
+        editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: monthOptions, // 동적으로 생성 앞뒤 5개월 목록
+        },
+        // 셀에는 '2026-08' 형태로 보여주고, 데이터값은 '202608'로 유지
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          return String(params.value).replace(/^(\d{4})(\d{2})$/, '$1-$2');
+        },
+        cellStyle: { textAlign: 'center', backgroundColor: '#e8f0f7', fontWeight: 'bold' },
+      },
+      // ------------------------------------------------------------------
+
+      { field: 'ordrQnty', headerName: '발주수량', width: 90, cellStyle: { textAlign: 'right' }, hide: isMobile },
+      { field: 'apgoQnty', headerName: '총입고수량', width: 100, cellStyle: { textAlign: 'right' }, hide: isMobile },
       { 
         field: 'needQnty', 
         headerName: isMobile ? '필요' : '필요 입고수량', 
@@ -338,10 +391,10 @@ useEffect(() => {
         suppressSizeToFit: true,
         cellStyle: { textAlign: 'right' } 
       },
-      { field: 'unit', headerName: '단위', width: 60, cellStyle: { textAlign: 'left' }, hide: isMobile  },
+      { field: 'unit', headerName: '단위', width: 60, cellStyle: { textAlign: 'left' }, hide: isMobile },
       { field: 'ordrDetl', headerName: '주문번호상세', hide: true}
     ],
-    [isMobile]
+    [isMobile, monthOptions]
   );
   /* ==================================== 그리드 컬럼 정의 및 기본 옵션 END ==================================== */
 
@@ -358,6 +411,9 @@ useEffect(() => {
   }), []);
   
   const handleAddItemToGrid = (item: DbItem) => {
+    // 현재월 기본값 구하기 ("202608")
+    const currentYymm = getCurrentYYYYMM();
+
     const newRow: BomItem = {
       checkbox: false,
       itemGubnName: item.itemGubnName || '',
@@ -365,6 +421,10 @@ useEffect(() => {
       itemCode: item.itemCode,
       atskCode: item.atskCode,
       itemName: item.itemName,
+
+      // 품목 직접 추가 시에도 현재월 기본값
+      gaipYmmm: currentYymm,
+
       ordrQnty: 0,
       apgoQnty: 0,
       needQnty: 0,
@@ -373,6 +433,7 @@ useEffect(() => {
       unit: item.unit || '',
       ordrDetl: item.ordrDetl
     };
+
     setRowData(prevRows => [...prevRows, newRow]);
     setIsItemModalOpen(false);
   };
@@ -505,14 +566,16 @@ const handleSubmit = async (e: React.FormEvent) => {
     return;
   }
 
+  // 현재월 기본값 획득 ("202608")
+  const currentYymm = getCurrentYYYYMM();
 
   // 백엔드 Pydantic (GaipgoCreateRequest) 규격에 맞춘 Payload 생성
   const payload = {
     ipgoDate: formattedIpgoDate,        // 가입고 일자 ('20260727')
     custCode: custCode,                 // 업체코드
-    userName: userName,               // 담당자
-    ordrNumb: selectedOrdrNo,           // 발주번호 (예: 'ORD20260727001')
-    teleNumb: teleNumb,                       // 필요 시 추가
+    userName: userName || "",           // 담당자
+    ordrNumb: selectedOrdrNo,           // 발주번호
+    teleNumb: teleNumb || "",
     storCode: "E010",                   // 기본 창고코드
     memoXxxx: "",                       // 비고
     statType: "N",
@@ -520,9 +583,10 @@ const handleSubmit = async (e: React.FormEvent) => {
     // 백엔드 DETL 저장용 품목 배열 (GaipgoDetailItem)
     items: validItems.map((item) => ({
       itemCode: item.itemCode,
-      ordrDetl: item.ordrDetl,          // HIDE 상태 컬럼의 주문상세 Key
+      ordrDetl: item.ordrDetl || "",    // HIDE 상태 컬럼의 주문상세 Key
       gaipQnty: Number(item.ipgoQnty),  // 금회 납품수량
-      memoXxxx: ""
+      gaipYmmm: item.gaipYmmm || currentYymm,
+      memoXxxx: item.memoXxxx || ""
     }))
   };
 

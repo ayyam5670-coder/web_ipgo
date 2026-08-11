@@ -38,7 +38,7 @@ SELECT_ITEM_GUBN_LIST = """
     ORDER BY code
 """
 
-# 가입고 내역 메뉴 메인 그리드 조회 쿼리
+# 가입고 등록 현황 메뉴 메인 그리드 조회 쿼리
 SELECT_GAIP_HISTOTY_MAIN_LIST = """
         SELECT A.ipgo_numb                                      AS ipgoNumb
                 , A.ipgo_date                                   AS ipgoDate      -- 입고예정일자
@@ -89,7 +89,7 @@ SELECT_GAIP_HISTOTY_MAIN_LIST = """
         ORDER BY A.ipgo_numb DESC
 """
 
-# 가입고 내역 메뉴 화면 모달창 상세 데이터 조회 쿼리
+# 가입고 등록 현황 메뉴 화면 모달창 상세 데이터 조회 쿼리
 SELECT_GAIP_HISTORY_DETL_ITEMS = """
         SELECT A.ipgo_numb
              , A.ipgo_date
@@ -144,7 +144,7 @@ SELECT_GAIP_HISTORY_DETL_ITEMS = """
           AND A.ipgo_numb LIKE ?
 """
 
-# 가입고 내역 메뉴 화면 수정 쿼리
+# 가입고 현황 메뉴 화면 수정 쿼리
 UPDATE_GAIP_DETL_ITEM = """
         UPDATE mt_gaip_detl
         SET     gaip_qnty = ?,
@@ -167,11 +167,12 @@ EXEC_SP_GAIP_INFO_INSERT = """
         @v_TELE_NUMB = ?,
         @v_STOR_CODE = ?,
         @v_MEMO_XXXX = ?,
-        @v_ORDR_NUMB = ?,
+        @v_ORDR_NUMB = ?,   -- 10자리 발주헤더 (S2607270001)
         @v_ITEM_CODE = ?,
-        @v_ORDR_DETL = ?,
+        @v_ORDR_DETL = ?,   -- 14자리 발주상세 (S26072700010001)
         @v_GAIP_QNTY = ?,
         @v_STAT_TYPE = ?,
+        @v_GAIP_YMMM = ?,
         @v_USER_IPPP = ?;
 
     SELECT @out_IPGO_NUMB AS IPGO_NUMB;
@@ -179,7 +180,7 @@ EXEC_SP_GAIP_INFO_INSERT = """
 
 
 
-# 발주서 모달용 마스터 목록 조회 쿼리
+# 가입고 등록 발주서 모달용 마스터 목록 조회 쿼리
 SELECT_ORDR_MASTER_LIST = """
         SELECT A.ordr_numb as ordrNumb
                 , CASE 
@@ -219,7 +220,7 @@ SELECT_ORDR_MASTER_LIST = """
         ORDER BY A.ordr_numb DESC
 """
 
-# 발주서 모달에서 선택한 리스트 조회하여 그리드에 뿌려줄 쿼리
+# 가입고 등록 발주서 모달에서 선택한 리스트 조회하여 그리드에 뿌려줄 쿼리
 SELECT_ORDR_DETL_ITEMS = """
         SELECT          A.ordr_numb
                         , A.ordr_date
@@ -233,6 +234,7 @@ SELECT_ORDR_DETL_ITEMS = """
 			, E.ipgo_qnty AS apgo_qnty
                         , E.mi_qnty
 			, F.summ_gaip
+                        --, F.gaip_ymmm
                         , ISNULL(C.name, C.qnty_code) AS unit
                         , E.ordr_numb AS ordrDetl
         FROM mt_ordr_mast AS A
@@ -281,7 +283,6 @@ SELECT_ORDR_DETL_ITEMS = """
                                 item_code,
                                 SUM(ISNULL(gaip_qnty,0)) AS summ_gaip
                         FROM mt_gaip_detl
-                        WHERE stat_type = 'N'
                         GROUP BY ordr_numb, item_code
         ) AS F ON A.ordr_numb + B.sqen_numb = F.ordr_numb AND B.item_code = F.item_code
 
@@ -289,7 +290,7 @@ SELECT_ORDR_DETL_ITEMS = """
           AND A.ordr_numb LIKE ?
 """
 
-# 발주 내역 메뉴 메인 리스트 조회
+# 발주 현황 메뉴 메인 리스트 조회
 SELECT_ORDR_MENU_MAIN_LIST = """
         SELECT A.ordr_numb as ordrNumb
              , A.ordr_date as ordrDate

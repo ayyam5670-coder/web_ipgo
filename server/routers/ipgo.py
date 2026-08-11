@@ -203,6 +203,7 @@ def get_ordr_detail_items(cust_code: str, ordr_numb: str):
                 "apgoQnty": row[8],     # 총입고수량
                 "miQnty": row[9],       # 미입고수량
                 "summGaip": row[10],    # 누적 가입고수량
+                #"gaipYmmm": row[11],    # 가입고 년월
                 "unit": row[11],        # 단위
                 "ordrDetl": row[12],    # ordr_numb
             })
@@ -217,7 +218,7 @@ def get_ordr_detail_items(cust_code: str, ordr_numb: str):
 
 
 # ----------------------------------------------------
-# 가입고 내역 메뉴 메인 리스트 조회 API
+# 가입고 등록 현황 메뉴 메인 리스트 조회 API
 # ----------------------------------------------------
 @ipgo_router.get("/menu/gaipHistory")
 def get_gaip_history_masters(
@@ -271,7 +272,7 @@ def get_gaip_history_masters(
 
 
 # ----------------------------------------------------
-# 가입고 내역 상세 품목 모달 조회 API
+# 가입고 등록 현황 상세 품목 모달 조회 API
 # ----------------------------------------------------
 @ipgo_router.get("/gaip/{gaip_numb}/items")
 def get_gaip_history_detail_items(cust_code: str, gaip_numb: str):
@@ -371,17 +372,19 @@ def update_gaip_history_detail_items(
 
 
 
-# ----------------------------------------
-# 가입고 등록 라우터 = 프로시저 연결
-# ----------------------------------------
 
+# ----------------------------------------
+# 가입고 등록 API
+# ----------------------------------------
 class GaipgoDetailItem(BaseModel):
     itemCode: str
-    ordrDetl: str  # ordr_numb = ordr_numa + sqen_numb (ordrDetl)
+    ordrDetl: str
     gaipQnty: float
+    gaipYmmm: Optional[str] = ""
     memoXxxx: Optional[str] = ""
 
 class GaipgoCreateRequest(BaseModel):
+    ipgoNumb: Optional[str] = "" 
     ipgoDate: str
     custCode: str
     userName: str
@@ -407,39 +410,38 @@ def create_gaipgo_info(payload: GaipgoCreateRequest, request: Request):
     if client_ip:
         client_ip = client_ip.split(",")[0].strip()
     else:
-        # 2. request.client가 None이 아닐 때만 host에 접근
         if request.client and hasattr(request.client, "host"):
             client_ip = request.client.host
         else:
-            client_ip = "127.0.0.1"  # 감지 실패 시 기본 IP (또는 빈값 "")
+            client_ip = "127.0.0.1"
 
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    generated_ipgo_numb = ""  # 첫번째 품목 저장 시 생성된 IPGO_NUMB를 백엔드에서 유지
+    generated_ipgo_numb = payload.ipgoNumb.strip() if payload.ipgoNumb else ""
     inserted_count = 0
 
     try:
         # 품목 목록(items) 수만큼 반복 실행
         for index, item in enumerate(payload.items):
 
-            # 두 번째 품목(index > 0)부터는 첫 번째 실행에서 만들어진 가입고 번호를 넘겨줌
-            current_ipgo_param = generated_ipgo_numb if index > 0 else ""
+            current_ipgo_param = generated_ipgo_numb
 
             params = (
-                current_ipgo_param,                 # @v_IPGO_NUMB (첫 번째 호출 시 빈값)
-                payload.ipgoDate,                   # @v_IPGO_DATE
-                payload.custCode,                   # @v_CUST_CODE
-                payload.userName,                   # @v_USER_NAME
-                payload.teleNumb or "",             # @v_TELE_NUMB
-                payload.storCode or "E010",          # @v_STOR_CODE
-                payload.memoXxxx or "",             # @v_MEMO_XXXX
-                payload.ordrNumb.strip(),           # @v_ORDR_NUMB
-                item.itemCode,                      # @v_ITEM_CODE
-                item.ordrDetl,                      # @v_ORDR_DETL (조회 결과의 ordrDetl)
-                item.gaipQnty,                      # @v_GAIP_QNTY
-                payload.statType or "Y",             # @v_STAT_TYPE
-                client_ip
+                current_ipgo_param,         # 1.  @v_IPGO_NUMB
+                payload.ipgoDate,           # 2.  @v_IPGO_DATE
+                payload.custCode,           # 3.  @v_CUST_CODE
+                payload.userName,           # 4.  @v_USER_NAME
+                payload.teleNumb or "",     # 5.  @v_TELE_NUMB
+                payload.storCode or "E010",  # 6.  @v_STOR_CODE
+                payload.memoXxxx or "",     # 7.  @v_MEMO_XXXX
+                payload.ordrNumb.strip(),   # 8.  @v_ORDR_NUMB
+                item.itemCode,              # 9.  @v_ITEM_CODE
+                item.ordrDetl.strip(),      # 10. @v_ORDR_DETL
+                item.gaipQnty,              # 11. @v_GAIP_QNTY
+                payload.statType or "Y",    # 12. @v_STAT_TYPE
+                item.gaipYmmm or "",        # 13. @v_GAIP_YMMM
+                client_ip                   # 14. @v_USER_IPPP
             )
 
             # ipgo_queries.py 상수의 SQL 실행
@@ -447,12 +449,10 @@ def create_gaipgo_info(payload: GaipgoCreateRequest, request: Request):
             row = cursor.fetchone()
 
             if row and row[0]:
-                # 채번된 가입고 번호 획득 (예: P2607270001)
                 generated_ipgo_numb = row[0]
 
             inserted_count += 1
 
-        # 전체 디테일 항목 저장이 무사히 끝나면 커밋
         conn.commit()
 
         return {
@@ -463,7 +463,7 @@ def create_gaipgo_info(payload: GaipgoCreateRequest, request: Request):
         }
 
     except Exception as e:
-        conn.rollback()  # 예외 발생 시 전체 트랜잭션 롤백
+        conn.rollback()
         print(f"❌ 가입고 등록 처리 에러: {e}")
         raise HTTPException(status_code=500, detail="가입고 등록 처리 중 오류가 발생했습니다.")
     finally:
@@ -471,7 +471,7 @@ def create_gaipgo_info(payload: GaipgoCreateRequest, request: Request):
 
 
 # ----------------------------------------------------
-# 발주 내역 메뉴 메인 리스트 조회 API
+# 발주 현황 메뉴 메인 리스트 조회 API
 # ----------------------------------------------------
 @ipgo_router.get("/menu/ordrHistory")
 def get_order_menu_masters(

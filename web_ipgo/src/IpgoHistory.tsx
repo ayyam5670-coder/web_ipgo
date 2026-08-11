@@ -543,7 +543,7 @@ export default function IpgoHistory({ custCode, custName }: IpgoHistoryProps) {
                   theme={themeAlpine}
                   loading={modalLoading}
                   singleClickEdit={true}
-                  // ★ 모달 그리드에 멀티 체크박스(헤더 전체선택 포함) 추가
+                  // 모달 그리드에 멀티 체크박스(헤더 전체선택 포함) 추가
                   rowSelection={{ mode: 'multiRow', headerCheckbox: true }}
                 />
               </div>
