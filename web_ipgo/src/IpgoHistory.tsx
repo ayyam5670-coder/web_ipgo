@@ -152,7 +152,7 @@ export default function IpgoHistory({ custCode, custName }: IpgoHistoryProps) {
     }
   };
 
-  // 수정버튼 이벤트 (체크박스 선택 후 수정 버튼)
+  /* ============================================ 수정버튼 이벤트 (체크박스 선택 후 수정 버튼) start ============================================ */
   const handleOpenEditModal = () => {
     const selectedNodes = mainGridRef.current?.api?.getSelectedNodes();
     const selectedMasters =
@@ -240,6 +240,59 @@ export default function IpgoHistory({ custCode, custName }: IpgoHistoryProps) {
     }
   };
 
+  /* ============================================ 수정버튼 이벤트 (체크박스 선택 후 수정 버튼) end ============================================ */
+
+  // ============================================ 삭제 버튼 이벤트 (체크박스 선택 후 삭제) start ============================================
+  const handleDeleteMaster = async () => {
+    const selectedNodes = mainGridRef.current?.api?.getSelectedNodes();
+    const selectedMasters =
+      selectedNodes
+        ?.map((node: any) => node.data)
+        .filter((data: any) => data !== undefined && data !== null) || [];
+
+    if (selectedMasters.length === 0) {
+      alert('삭제할 가입고 내역을 목록에서 선택해 주세요.');
+      return;
+    }
+
+    // 삭제 대상 가입고번호 배열 추출
+    const targetIpgoNumbs = selectedMasters.map((m: IpgoHistoryMaster) => m.ipgoNumb);
+
+    // 사용자 확인 알림
+    const confirmMsg =
+      selectedMasters.length === 1
+        ? `가입고번호 [${targetIpgoNumbs[0]}] 내역을 삭제하시겠습니까?`
+        : `선택한 ${selectedMasters.length}건의 가입고 내역을 삭제하시겠습니까?`;
+
+    if (!confirm(confirmMsg)) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // 삭제 API 호출 (DELETE 요청)
+      // 단건/다건 모두 처리가능하도록 ipgoNumbs 배열을 query parameter 또는 body로 전달
+      const response = await ipgoApi.delete('/menu/gaipHistory', {
+        data: { ipgoNumbs: targetIpgoNumbs },
+      });
+
+      if (response.status === 200) {
+        alert('가입고 내역이 정상적으로 삭제되었습니다.');
+        fetchMasterList(); // 메인 리스트 재조회
+      }
+    } catch (error: any) {
+      console.error('❌ 가입고 내역 삭제 실패:', error);
+      const errorMsg = error.response?.data?.detail || '가입고 내역 삭제 중 오류가 발생했습니다.';
+      alert(`삭제 실패: ${errorMsg}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // ============================================ 삭제 버튼 이벤트 (체크박스 선택 후 삭제) end ============================================
+
+
+
   // 선택된 항목 인쇄 핸들러
   const handlePrintHistory = async () => {
     const selectedNodes = mainGridRef.current?.api?.getSelectedNodes();
@@ -300,7 +353,7 @@ export default function IpgoHistory({ custCode, custName }: IpgoHistoryProps) {
     { field: 'ipgoNumb', headerName: '가입고번호', width: 150, sortable: true, filter: true },
     { field: 'saveDate', headerName: '등록일', width: 110, cellStyle: { textAlign: 'center' } },
     { field: 'ipgoDate', headerName: '입고예정일', width: 110, cellStyle: { textAlign: 'center' } },
-    { field: 'lastDate', headerName: '최근입고일', width: 110, cellStyle: { textAlign: 'center' } },
+    { field: 'lastDate', headerName: '최근가입고일', width: 110, cellStyle: { textAlign: 'center' } },
     {
       field: 'statType',
       headerName: '진행상태',
@@ -438,6 +491,13 @@ export default function IpgoHistory({ custCode, custName }: IpgoHistoryProps) {
             style={{ height: '32px', padding: '0 16px', backgroundColor: '#f59f00', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}
           >
             ✏️ 수정
+          </button>
+          <button 
+            type="button" 
+            onClick={handleDeleteMaster}
+            style={{ height: '32px', padding: '0 16px', backgroundColor: '#e03131', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}
+          >
+            🗑️ 삭제
           </button>
         </div>
       </div>

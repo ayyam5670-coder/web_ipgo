@@ -153,6 +153,33 @@ UPDATE_GAIP_DETL_ITEM = """
         AND item_code = ?
 """
 
+# 가입고현황 메인화면 삭제버튼 쿼리
+DELETE_GAIP_DETL_MULTI = "DELETE FROM MT_GAIP_DETL WHERE IPGO_NUMB IN ({placeholders})"
+DELETE_IMSI_GAIP_USER_MULTI = "DELETE FROM IMSI_GAIP_USER WHERE IPGO_NUMB IN ({placeholders})"
+DELETE_GAIP_MAST_MULTI = "DELETE FROM MT_GAIP_MAST WHERE IPGO_NUMB IN ({placeholders})"
+
+
+# 가입고현황 수정 모달창 삭제버튼 쿼리
+# 해당 가입고 번호의 잔여 상세 품목 개수 조회
+SELECT_GAIP_DETL_COUNT = """
+    SELECT COUNT(*) 
+    FROM mt_gaip_detl 
+    WHERE ipgo_numb = ?
+"""
+
+# 특정 상세 품목들만 삭제 (단건/다건)
+# WHERE ipgo_numb = ? AND item_code IN (?, ?, ...)
+DELETE_GAIP_DETL_ITEMS = """
+    DELETE FROM mt_gaip_detl 
+    WHERE ipgo_numb = ? 
+      AND item_code IN ({placeholders})
+"""
+
+# 마스터 단위 전체 삭제 (단건 가입고번호 기준)
+DELETE_GAIP_DETL_ALL = "DELETE FROM mt_gaip_detl WHERE ipgo_numb = ?"
+DELETE_IMSI_GAIP_USER_SINGLE = "DELETE FROM imsi_gaip_user WHERE ipgo_numb = ?"
+DELETE_GAIP_MAST_SINGLE = "DELETE FROM mt_gaip_mast WHERE ipgo_numb = ?"
+
 
 
 # 가입고 정보 저장 프로시저 실행 쿼리
