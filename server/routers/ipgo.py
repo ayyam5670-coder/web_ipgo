@@ -412,67 +412,6 @@ def delete_gaip_history(req: GaipDeleteRequest):
         conn.close()
 
 
-# ----------------------------------------------------
-# 가입고 수정 모달 - 상세 품목 삭제 API
-# ----------------------------------------------------
-class GaipDetailDeleteRequest(BaseModel):
-    ipgoNumb: str
-    targetItemCodes: List[str]  # 삭제할 품목 코드 배열
-
-@ipgo_router.delete("/menu/gaipHistory/detail")
-def delete_gaip_detail_items(req: GaipDetailDeleteRequest):
-    if not req.ipgoNumb or not req.targetItemCodes:
-        raise HTTPException(status_code=400, detail="삭제할 가입고 번호 또는 품목 정보가 유효하지 않습니다.")
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    try:
-        # 1. 현재 가입고 번호의 전체 DETL 개수 조회
-        cursor.execute(ipgo_queries.SELECT_GAIP_DETL_COUNT, (req.ipgoNumb,))
-        total_count = cursor.fetchone()[0]
-
-        # 2. 전체 삭제 여부 판단 (전체 개수 == 선택 삭제할 개수)
-        is_full_delete = (total_count <= len(req.targetItemCodes))
-
-        if is_full_delete:
-            # --------------------------------------------------
-            # [CASE A] 모든 품목 삭제 -> MAST, DETL, IMSI 전체 삭제
-            # --------------------------------------------------
-            cursor.execute(ipgo_queries.DELETE_GAIP_DETL_ALL, (req.ipgoNumb,))
-            cursor.execute(ipgo_queries.DELETE_IMSI_GAIP_USER_SINGLE, (req.ipgoNumb,))
-            cursor.execute(ipgo_queries.DELETE_GAIP_MAST_SINGLE, (req.ipgoNumb,))
-            
-            message = "모든 품목이 삭제되어 해당 가입고 전표 전체가 삭제되었습니다."
-        else:
-            # --------------------------------------------------
-            # [CASE B] 일부 품목만 삭제 -> DETL 테이블에서 지정 항목만 삭제
-            # --------------------------------------------------
-            placeholders = ", ".join(["?"] * len(req.targetItemCodes))
-            q_detl = ipgo_queries.DELETE_GAIP_DETL_ITEMS.format(placeholders=placeholders)
-            
-            # 첫 번째 파라미터는 ipgo_numb, 이후는 item_code 배열
-            params = [req.ipgoNumb] + req.targetItemCodes
-            cursor.execute(q_detl, params)
-            
-            message = f"{len(req.targetItemCodes)}건의 품목이 삭제되었습니다."
-
-        conn.commit()
-
-        # isFullDeleted 플래그를 프론트로 전달하여 모달 닫기 여부 결정
-        return {
-            "success": True,
-            "isFullDeleted": is_full_delete,
-            "message": message
-        }
-
-    except Exception as e:
-        conn.rollback()
-        print(f"❌ 가입고 상세 삭제 에러: {e}")
-        raise HTTPException(status_code=500, detail="상세 품목 삭제 중 오류가 발생했습니다.")
-    finally:
-        conn.close()
-
 
 
 # ----------------------------------------
